@@ -1,0 +1,11 @@
+pyzmq
+pymongo
+opencv-python
+ultralytics
+norfair
+pillow
+numpy
+tqdm
+fastapi
+uvicorn
+python-multipart
