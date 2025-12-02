@@ -27,10 +27,10 @@ from pymongo import MongoClient
 # Import the placeholder classifier you agreed to use
 # Make sure classifier/cnn_classifier.py contains PlaceholderClassifier
 try:
-    from classifier.cnn_classifier import PlaceholderClassifier
+    from classifier.cnn_classifier import AccidentClassifier
 except Exception:
     # Provide a very small fallback if the import fails (defensive)
-    class PlaceholderClassifier:
+    class AccidentClassifier:
         def __init__(self):
             print("[classifier] fallback placeholder active")
 
@@ -98,9 +98,9 @@ def main(zmq_host: str, zmq_port: int, mongo_uri: str, db_name: str, out_dir: st
     if verbose:
         print(f"[subscriber] connected SUB -> {connect_addr}")
 
-    classifier = PlaceholderClassifier()
+    classifier = AccidentClassifier()
     if verbose:
-        print("[subscriber] classifier initialized (placeholder)")
+        print("[subscriber] classifier initialized (real)")
 
     try:
         while True:

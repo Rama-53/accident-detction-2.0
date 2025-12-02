@@ -5,24 +5,31 @@ from torchvision import transforms
 from PIL import Image
 
 
-class PlaceholderClassifier:   # keep this name
+class AccidentClassifier:
     def __init__(self, weights_path="classifier/my_model.pth"):
         print("[classifier] loading weights from:", weights_path)
 
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
 
-        # TODO: build the SAME model architecture you used in training
-
-        from torchvision.models import resnet18   # example
+        # Build the SAME model architecture used in training
+        from torchvision.models import resnet18
+        # weights=None because we load our own
         self.model = resnet18(weights=None)
-        self.model.fc = torch.nn.Linear(512, 2)   # <-- num_classes
+        # Replace the final fully connected layer for 2 classes
+        self.model.fc = torch.nn.Linear(512, 2)
 
-        state = torch.load(weights_path, map_location=self.device)
-        self.model.load_state_dict(state)
+        # Load state dict
+        try:
+            state = torch.load(weights_path, map_location=self.device)
+            self.model.load_state_dict(state)
+        except Exception as e:
+            print(f"[classifier] ERROR loading weights: {e}")
+            raise
+
         self.model.to(self.device)
         self.model.eval()
 
-        # TODO: use your training transforms
+        # Standard ImageNet transforms are usually good, but ensure this matches training
         self.transform = transforms.Compose([
             transforms.Resize((224, 224)),
             transforms.ToTensor(),
@@ -32,7 +39,7 @@ class PlaceholderClassifier:   # keep this name
             ),
         ])
 
-        # TODO: labels in the order you trained
+        # Labels in the order trained
         self.idx_to_label = {
             0: "no_accident",
             1: "vehicle_collision",
@@ -40,16 +47,26 @@ class PlaceholderClassifier:   # keep this name
 
     @torch.inference_mode()
     def predict(self, pil_img: Image.Image):
+        # Preprocess
         x = self.transform(pil_img).unsqueeze(0).to(self.device)
+        
+        # Forward pass
         logits = self.model(x)
         probs = torch.softmax(logits, dim=1)[0]
 
+        # Get result
         class_idx = int(torch.argmax(probs))
         confidence = float(probs[class_idx])
         label = self.idx_to_label.get(class_idx, "unknown")
 
+        # Determine severity based on confidence (heuristic)
         if label == "vehicle_collision":
-            severity = "high" if confidence > 0.8 else "medium" if confidence > 0.5 else "low"
+            if confidence > 0.8:
+                severity = "high"
+            elif confidence > 0.5:
+                severity = "medium"
+            else:
+                severity = "low"
         else:
             severity = "low"
 
