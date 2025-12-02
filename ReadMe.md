@@ -3,7 +3,7 @@
 A real-time accident detection system featuring a YOLOv8-based detector, a ResNet18 classifier, and a modern React dashboard for live monitoring and alerts.
 
 ## Key Features
-- **Real-Time Detection**: Uses YOLOv8 to detect vehicles and Norfair for tracking.
+- **Real-Time Detection**: Uses YOLOv11 to detect vehicles and Norfair for tracking.
 - **Accident Classification**: Verifies potential crashes using a custom ResNet18 CNN.
 - **Smart Alerts**:
     - **Visual Feedback**: Bounding boxes turn **RED** upon crash detection.
@@ -88,3 +88,23 @@ python classifier_subscriber.py
 - **Stream Freeze**: If the video stops, the detector might have crashed. Restart it.
 - **No Alerts**: Check if the subscriber is running and connected to MongoDB.
 - **Wrong Stream**: Ensure "Detector Stream (with BBoxes)" is selected in the dashboard.
+
+## File Structure & Descriptions
+
+### Core Services
+- **`detector_publisher.py`**: The "eyes" of the system. Reads video frames, runs the YOLOv11 detector, tracks vehicles, and publishes candidate accident events over ZeroMQ. Also hosts the MJPEG stream for visualization.
+- **`classifier_subscriber.py`**: The "brain" of the system. Subscribes to detector events, runs the ResNet18 classifier on crops to confirm accidents, applies alert filtering logic (3/5 threshold), and saves results to MongoDB.
+- **`services/api_server.py`**: The "bridge". A FastAPI backend that serves accident data to the dashboard and proxies the video stream.
+
+### Logic Modules
+- **`detector/detector.py`**: Contains the `AccidentDetector` class. Handles object detection (YOLOv11), tracking (Norfair), and heuristic crash detection (IoU + Speed).
+- **`classifier/cnn_classifier.py`**: Contains the `AccidentClassifier` class. Wraps the ResNet18 model to predict "accident" vs "no_accident" on image crops.
+
+### Frontend
+- **`dashboard/`**: A Vite + React project containing the source code for the web dashboard.
+    - **`src/App.jsx`**: Main UI component handling the video feed, alert list, and polling logic.
+    - **`src/config.js`**: Configuration file for the backend API URL.
+
+### Configuration & Models
+- **`requirements.txt`**: List of Python libraries required to run the system.
+- **`yolo11s.pt`**: Pre-trained YOLOv11 small model weights used for vehicle detection.

@@ -181,7 +181,11 @@ def main(video_source: str, zmq_port: int = 5556, publish_rate: float = None, ca
                 tid = bbox.get("tracker_id", "?")
                 
                 # Red for crash, Green for normal
-                color = (0, 0, 255) if tid in crashed_ids else (0, 255, 0)
+                if tid in crashed_ids:
+                    color = (0, 0, 255)
+                    # print(f"[publisher] Drawing RED box for tracker {tid}")
+                else:
+                    color = (0, 255, 0)
                 
                 if xyxy:
                     x1, y1, x2, y2 = map(int, xyxy)

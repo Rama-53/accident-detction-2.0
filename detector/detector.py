@@ -5,7 +5,7 @@ detector.py
 AccidentDetector class that wraps YOLO + Norfair and detects vehicle collisions
 using the same logic as prototype_accident_detector.py:
 
-- YOLOv8 object detection
+- YOLOv11 object detection
 - Norfair tracking (tracker IDs are used to track objects over time)
 - Crash logic based on:
     * IoU between vehicle bounding boxes
@@ -26,10 +26,10 @@ import norfair
 class AccidentDetector:
     def __init__(
         self,
-        model_path: str = "yolov8s.pt",
-        conf_thresh: float = 0.45,
-        iou_threshold: float = 0.03,
-        min_frames_to_confirm_crash: int = 3,
+        model_path: str = "yolo11s.pt",
+        conf_thresh: float = 0.50,
+        iou_threshold: float = 0.15,
+        min_frames_to_confirm_crash: int = 5,
         rel_speed_threshold: float = 1.0,
         target_classes=None,
         vehicle_classes=None,
@@ -41,7 +41,7 @@ class AccidentDetector:
         Initialize the accident detector.
 
         Args:
-            model_path: Path to YOLOv8 weights.
+            model_path: Path to YOLOv11 weights.
             conf_thresh: Confidence threshold for detections.
             iou_threshold: IoU threshold for considering overlapping vehicles.
             min_frames_to_confirm_crash: Number of consecutive frames a pair
@@ -198,7 +198,7 @@ class AccidentDetector:
         self.frame_idx += 1
 
         # Run YOLO
-        results = self.model(frame, verbose=False)[0]
+        results = self.model(frame, verbose=False, device=0)[0]
         norfair_dets, boxes = self._yolo_to_boxes_and_dets(results)
 
         # Update Norfair tracker
