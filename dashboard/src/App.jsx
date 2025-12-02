@@ -53,7 +53,7 @@ function App() {
     }
 
     fetchEvents();
-    const id = setInterval(fetchEvents, 2000);
+    const id = setInterval(fetchEvents, 500);
     return () => clearInterval(id);
   }, [selectedCamera]);
 
@@ -442,9 +442,8 @@ function App() {
                   return (
                     <label
                       key={src.id}
-                      className={`multi-feed-option ${
-                        checked ? "selected" : ""
-                      } ${disabled ? "disabled" : ""}`}
+                      className={`multi-feed-option ${checked ? "selected" : ""
+                        } ${disabled ? "disabled" : ""}`}
                     >
                       <input
                         type="checkbox"
@@ -472,45 +471,45 @@ function App() {
             {multiSourceIds.some(
               (srcId) => getSourceMeta(srcId)?.requires_value
             ) && (
-              <div className="multi-feed-inputs">
-                {multiSourceIds.map((srcId) => {
-                  const meta = getSourceMeta(srcId);
-                  if (!meta || !meta.requires_value) {
-                    return null;
-                  }
-                  const valueReady = sourceHasRequiredValue(srcId);
-                  return (
-                    <div
-                      key={`${srcId}-input`}
-                      className="video-source-custom"
-                    >
-                      <label className="video-source-input-label">
-                        {meta.label} input:
-                      </label>
-                      <input
-                        type={meta.value_type === "number" ? "number" : "text"}
-                        placeholder={
-                          meta.value_hint || "Enter path / URL / webcam index"
-                        }
-                        value={getSourceValue(srcId)}
-                        onChange={(e) =>
-                          setVideoSourceValues((prev) => ({
-                            ...prev,
-                            [srcId]: e.target.value,
-                          }))
-                        }
-                        className="video-source-input"
-                      />
-                      {!valueReady && (
-                        <small className="video-source-hint">
-                          Provide connection details for {meta.label}.
-                        </small>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
+                <div className="multi-feed-inputs">
+                  {multiSourceIds.map((srcId) => {
+                    const meta = getSourceMeta(srcId);
+                    if (!meta || !meta.requires_value) {
+                      return null;
+                    }
+                    const valueReady = sourceHasRequiredValue(srcId);
+                    return (
+                      <div
+                        key={`${srcId}-input`}
+                        className="video-source-custom"
+                      >
+                        <label className="video-source-input-label">
+                          {meta.label} input:
+                        </label>
+                        <input
+                          type={meta.value_type === "number" ? "number" : "text"}
+                          placeholder={
+                            meta.value_hint || "Enter path / URL / webcam index"
+                          }
+                          value={getSourceValue(srcId)}
+                          onChange={(e) =>
+                            setVideoSourceValues((prev) => ({
+                              ...prev,
+                              [srcId]: e.target.value,
+                            }))
+                          }
+                          className="video-source-input"
+                        />
+                        {!valueReady && (
+                          <small className="video-source-hint">
+                            Provide connection details for {meta.label}.
+                          </small>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
 
             <div className="multi-feed-grid">
               {multiSourceIds.length === 0 && (
@@ -637,13 +636,7 @@ function App() {
             </div>
           </div>
 
-          {/* Map placeholder */}
-          <div className="card">
-            <h2>Map (Placeholder)</h2>
-            <div className="card-body">
-              <p>Enable Leaflet for live map. See README.</p>
-            </div>
-          </div>
+
         </section>
       </main>
       {activeEvent && (

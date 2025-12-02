@@ -78,7 +78,55 @@ def make_json_safe(obj: Any) -> Any:
     except Exception:
         return None
 
+import threading
+from http.server import BaseHTTPRequestHandler, HTTPServer
+from socketserver import ThreadingMixIn
+
+# Global buffer for the latest frame
+latest_frame_lock = threading.Lock()
+latest_frame_jpeg = None
+
+class ThreadingHTTPServer(ThreadingMixIn, HTTPServer):
+    pass
+
+class MJPEGHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        if self.path == '/stream.mjpg':
+            self.send_response(200)
+            self.send_header('Content-type', 'multipart/x-mixed-replace; boundary=frame')
+            self.end_headers()
+            try:
+                while True:
+                    with latest_frame_lock:
+                        if latest_frame_jpeg is None:
+                            continue
+                        data = latest_frame_jpeg
+                    
+                    self.wfile.write(b'--frame\r\n')
+                    self.send_header('Content-Type', 'image/jpeg')
+                    self.send_header('Content-Length', str(len(data)))
+                    self.end_headers()
+                    self.wfile.write(data)
+                    self.wfile.write(b'\r\n')
+                    time.sleep(0.033)
+            except Exception:
+                pass
+        else:
+            self.send_error(404)
+
+def start_mjpeg_server(port=5001):
+    try:
+        server = ThreadingHTTPServer(('0.0.0.0', port), MJPEGHandler)
+        print(f"[publisher] MJPEG stream available at http://localhost:{port}/stream.mjpg")
+        server.serve_forever()
+    except Exception as e:
+        print(f"[publisher] Failed to start MJPEG server: {e}")
+
 def main(video_source: str, zmq_port: int = 5556, publish_rate: float = None, camera_id: str = "cam_1", publish_only_crashes: bool = False):
+    # Start MJPEG server in background
+    t = threading.Thread(target=start_mjpeg_server, args=(5001,), daemon=True)
+    t.start()
+
     # Prepare ZeroMQ PUB
     ctx = zmq.Context()
     sock = ctx.socket(zmq.PUB)
@@ -105,12 +153,47 @@ def main(video_source: str, zmq_port: int = 5556, publish_rate: float = None, ca
         while True:
             ret, frame = cap.read()
             if not ret:
-                print("[publisher] End of video / stream.")
-                break
+                # If video file ends, loop back to start
+                print("[publisher] Video ended, looping...")
+                cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
+                ret, frame = cap.read()
+                if not ret:
+                    print("[publisher] Failed to read video frame after loop.")
+                    break
             frame_idx += 1
 
             # process frame -> event (expected JSON-friendly structure)
             event = detector.process_frame(frame)
+
+            # Draw bounding boxes for visualization
+            vis_frame = frame.copy()
+            bboxes = event.get("bboxes", [])
+            
+            # Identify crashed tracker IDs
+            crashed_ids = set()
+            for crash in event.get("crashes", []):
+                pair = crash.get("pair_ids", [])
+                crashed_ids.update(pair)
+
+            for bbox in bboxes:
+                xyxy = bbox.get("xyxy")
+                cls_name = bbox.get("cls_name", "obj")
+                tid = bbox.get("tracker_id", "?")
+                
+                # Red for crash, Green for normal
+                color = (0, 0, 255) if tid in crashed_ids else (0, 255, 0)
+                
+                if xyxy:
+                    x1, y1, x2, y2 = map(int, xyxy)
+                    cv2.rectangle(vis_frame, (x1, y1), (x2, y2), color, 2)
+                    cv2.putText(vis_frame, f"{cls_name} {tid}", (x1, y1 - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
+            
+            # Update MJPEG buffer
+            ok, buf = cv2.imencode(".jpg", vis_frame)
+            if ok:
+                with latest_frame_lock:
+                    global latest_frame_jpeg
+                    latest_frame_jpeg = buf.tobytes()
 
             # attach metadata
             event["camera_id"] = camera_id

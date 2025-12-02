@@ -347,6 +347,17 @@ class AccidentDetector:
                             b64 = base64.b64encode(buf.tobytes()).decode("ascii")
                             cropped_images_b64.append(b64)
 
+        # Encode full frame if there are crashes
+        full_frame_b64 = None
+        if crashes:
+            ok, buf = cv2.imencode(
+                ".jpg",
+                frame,
+                [int(cv2.IMWRITE_JPEG_QUALITY), self.jpeg_quality],
+            )
+            if ok:
+                full_frame_b64 = base64.b64encode(buf.tobytes()).decode("ascii")
+
         event = {
             "frame_idx": self.frame_idx,
             "bboxes": bboxes_info,
@@ -354,6 +365,7 @@ class AccidentDetector:
             "velocities": {int(k): (float(v[0]), float(v[1])) for k, v in velocities.items()},
             "crashes": crashes,
             "cropped_images_b64": cropped_images_b64,
+            "full_frame_b64": full_frame_b64,
         }
 
         return event

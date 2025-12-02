@@ -66,6 +66,16 @@ VIDEO_SOURCES: Dict[str, Dict[str, Any]] = {
         "location_lat": 37.3353,
         "location_lng": -121.8893,
     },
+    "detector_stream": {
+        "label": "Detector Stream (with BBoxes)",
+        "type": "ip",
+        "description": "Live stream from the detector with bounding boxes",
+        "source": "http://127.0.0.1:5001/stream.mjpg",
+        "requires_value": False,
+        "camera_id": "detector_stream",
+        "camera_name": "Detector Live View",
+        "location": "Processing Node",
+    },
     "webcam_0": {
         "label": "Default webcam (index 0)",
         "type": "webcam",
@@ -325,6 +335,9 @@ def _video_frame_generator(source: str) -> Generator[bytes, None, None]:
             if not ok:
                 continue
             frame_bytes = buffer.tobytes()
+            # Add a small delay to simulate ~30 FPS
+            import time
+            time.sleep(0.033)
             yield (
                 b"--frame\r\n"
                 b"Content-Type: image/jpeg\r\n\r\n" + frame_bytes + b"\r\n"
@@ -365,6 +378,9 @@ def video_feed(source_id: str = DEFAULT_VIDEO_SOURCE_ID, source_value: Optional[
 
     if source is None:
         raise HTTPException(status_code=400, detail="Invalid or unsupported video source")
+    
+    print(f"[api] video_feed requested source_id={source_id}", flush=True)
+    print(f"[api] resolved source={source}", flush=True)
 
     return StreamingResponse(
         _video_frame_generator(source),

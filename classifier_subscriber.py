@@ -23,6 +23,25 @@ import traceback
 import zmq
 from PIL import Image
 from pymongo import MongoClient
+from collections import deque
+
+class CameraState:
+    def __init__(self, history_len=5, cooldown_len=10):
+        self.history = deque(maxlen=history_len)
+        self.cooldown = 0
+        self.cooldown_len = cooldown_len
+
+    def update(self, is_accident):
+        self.history.append(is_accident)
+        if self.cooldown > 0:
+            self.cooldown -= 1
+
+    def should_alert(self):
+        # Alert if >= 3 accidents in last 5 frames AND cooldown is 0
+        if sum(self.history) >= 3 and self.cooldown == 0:
+            self.cooldown = self.cooldown_len
+            return True
+        return False
 
 # Import the placeholder classifier you agreed to use
 # Make sure classifier/cnn_classifier.py contains PlaceholderClassifier
@@ -102,6 +121,9 @@ def main(zmq_host: str, zmq_port: int, mongo_uri: str, db_name: str, out_dir: st
     if verbose:
         print("[subscriber] classifier initialized (real)")
 
+    # Track state per camera
+    camera_states = {}
+
     try:
         while True:
             try:
@@ -129,6 +151,33 @@ def main(zmq_host: str, zmq_port: int, mongo_uri: str, db_name: str, out_dir: st
             # Process cropped images (base64) if present
             crops_b64 = event.get("cropped_images_b64", []) or []
             crops_meta = []
+            
+            # 1. Handle Full Frame (if present) - Make it the FIRST item
+            full_frame_b64 = event.get("full_frame_b64")
+            if full_frame_b64:
+                try:
+                    ff_img = decode_b64_to_pil(full_frame_b64)
+                    timestamp = datetime.utcnow().strftime("%Y%m%dT%H%M%S%f")[:-3]
+                    fname = f"{camera_id}_f{frame_idx}_FULL_{timestamp}.jpg"
+                    fpath = out_dir / fname
+                    save_pil_to_path(ff_img, fpath)
+                    
+                    # Add as a "virtual" crop with high severity so it's kept
+                    crops_meta.append({
+                        "file": str(fpath),
+                        "width": ff_img.width,
+                        "height": ff_img.height,
+                        "prediction": {
+                            "label": "vehicle_collision",
+                            "severity": "high", # Force high severity
+                            "confidence": 1.0,
+                            "note": "full_frame_snapshot"
+                        }
+                    })
+                except Exception as e:
+                    print(f"[subscriber] failed to save full frame: {e}")
+
+            # 2. Handle Crops
             for i, b64 in enumerate(crops_b64):
                 try:
                     pil_img = decode_b64_to_pil(b64)
@@ -159,6 +208,48 @@ def main(zmq_host: str, zmq_port: int, mongo_uri: str, db_name: str, out_dir: st
                     "height": pil_img.height,
                     "prediction": pred
                 })
+
+            # Filter crops: keep ONLY "vehicle_collision"
+            accident_crops = []
+            for c in crops_meta:
+                if c["prediction"].get("label") == "vehicle_collision":
+                    accident_crops.append(c)
+                else:
+                    # Delete non-accident crop image
+                    try:
+                        os.remove(c["file"])
+                    except OSError:
+                        pass
+            
+            crops_meta = accident_crops
+
+            # --- Alert Logic Start ---
+            if camera_id not in camera_states:
+                camera_states[camera_id] = CameraState()
+            
+            state = camera_states[camera_id]
+            has_accident = len(crops_meta) > 0
+            state.update(has_accident)
+
+            if not state.should_alert():
+                if verbose and has_accident:
+                    print(f"[subscriber] skipping frame {frame_idx} - suppressed by logic (history={sum(state.history)}/5, cooldown={state.cooldown})")
+                
+                # Cleanup images if we are suppressing the alert
+                for c in crops_meta:
+                    try:
+                        os.remove(c["file"])
+                    except OSError:
+                        pass
+                continue
+            # --- Alert Logic End ---
+
+            if not crops_meta:
+                # Should be covered by should_alert() returning False if history is empty/low, 
+                # but good safety check if logic changes.
+                if verbose:
+                    print(f"[subscriber] skipping frame {frame_idx} - no accident crops found")
+                continue
 
             # Build document and insert into MongoDB
             doc = build_mongo_doc(camera_id, frame_idx, ts_utc, event, crops_meta)
