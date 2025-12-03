@@ -252,7 +252,8 @@ class AccidentDetector:
 
                     pair_id = tuple(sorted([idA, idB]))
 
-                    if iou > self.iou_threshold or rspeed > self.rel_speed_threshold:
+                    # Enforce overlap: iou must be > 0
+                    if iou > 0 and (iou > self.iou_threshold or rspeed > self.rel_speed_threshold):
                         # Condition met this frame => increase counter
                         self.crash_counter[pair_id] += 1
                         self.pair_last_seen[pair_id] = now

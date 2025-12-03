@@ -149,7 +149,7 @@ def process_frame(frame):
                 v1 = velocities.get(idA, (0,0))
                 v2 = velocities.get(idB, (0,0))
                 rspeed = relative_speed(v1, v2)
-                if iou > IOU_THRESHOLD or rspeed > REL_SPEED_THRESHOLD:
+                if iou > 0 and (iou > IOU_THRESHOLD or rspeed > REL_SPEED_THRESHOLD):
                     # count consecutive frames for this pair
                     pid = tuple(sorted([idA,idB]))
                     crash_counter[pid] += 1
