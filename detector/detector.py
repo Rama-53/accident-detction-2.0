@@ -3,14 +3,15 @@
 detector.py
 
 AccidentDetector class that wraps YOLO + Norfair and detects vehicle collisions
-using the same logic as prototype_accident_detector.py:
+using physics-based anomaly detection:
 
 - YOLOv11 object detection
-- Norfair tracking (tracker IDs are used to track objects over time)
+- Norfair tracking
 - Crash logic based on:
-    * IoU between vehicle bounding boxes
-    * Relative speed between tracked objects
-    * A minimum number of consecutive frames to confirm a crash
+    * Deceleration (sudden stops)
+    * Angle change (abrupt turns)
+    * Spatial interaction (proximity between stressed objects)
+    * IoU overlap (traditional collision)
 """
 
 import time
@@ -36,6 +37,12 @@ class AccidentDetector:
         tracker_distance_threshold: float = 60.0,
         crop_on_crash: bool = True,
         jpeg_quality: int = 80,
+        # New physics parameters
+        decel_weight: float = 5.0,
+        angle_weight: float = 2.0,
+        anomaly_thresh: float = 25.0,
+        interaction_radius: float = 50.0,
+        min_speed: float = 1.0,
     ):
         """
         Initialize the accident detector.
@@ -45,8 +52,7 @@ class AccidentDetector:
             conf_thresh: Confidence threshold for detections.
             iou_threshold: IoU threshold for considering overlapping vehicles.
             min_frames_to_confirm_crash: Number of consecutive frames a pair
-                must satisfy the condition (IoU or relative speed) to be
-                considered a crash.
+                must satisfy the condition to be considered a crash.
             rel_speed_threshold: Relative speed threshold (in pixels/frame).
             target_classes: Set of class IDs to track (default: {0,2,3,7}).
             vehicle_classes: Set of class IDs considered as vehicles
@@ -54,6 +60,11 @@ class AccidentDetector:
             tracker_distance_threshold: Norfair distance_threshold.
             crop_on_crash: Whether to return cropped images for crashed vehicles.
             jpeg_quality: JPEG quality for cropped images.
+            decel_weight: Weight for deceleration in anomaly score.
+            angle_weight: Weight for angle change in anomaly score.
+            anomaly_thresh: Threshold for anomaly score to trigger crash check.
+            interaction_radius: Max distance to consider a crash between two objects.
+            min_speed: Minimum speed to consider for anomaly calculations.
         """
         self.model_path = model_path
         self.conf_thresh = conf_thresh
@@ -62,6 +73,13 @@ class AccidentDetector:
         self.rel_speed_threshold = rel_speed_threshold
         self.crop_on_crash = crop_on_crash
         self.jpeg_quality = int(jpeg_quality)
+
+        # Physics parameters
+        self.decel_weight = decel_weight
+        self.angle_weight = angle_weight
+        self.anomaly_thresh = anomaly_thresh
+        self.interaction_radius = interaction_radius
+        self.min_speed = min_speed
 
         if target_classes is None:
             # person, car, motorcycle, truck
@@ -83,8 +101,9 @@ class AccidentDetector:
             distance_threshold=tracker_distance_threshold,
         )
 
-        # Per-tracker history: tracker_id -> last center (x, y)
-        self.object_history = {}
+        # Per-tracker history
+        self.object_history = {}  # tracker_id -> last center (x, y)
+        self.last_velocities = {} # tracker_id -> (vx, vy)
 
         # Crash counting: (id1, id2) -> consecutive frames counter
         self.crash_counter = defaultdict(int)
@@ -124,17 +143,14 @@ class AccidentDetector:
 
         return float(interArea / unionArea)
 
-    def get_velocity(self, obj_id, curr_pos):
-        """
-        Compute velocity from previous position. Store curr_pos as last position.
-        """
-        if obj_id in self.object_history:
-            prev = self.object_history[obj_id]
-            vel = (curr_pos[0] - prev[0], curr_pos[1] - prev[1])
-        else:
-            vel = (0.0, 0.0)
-        self.object_history[obj_id] = curr_pos
-        return vel
+    @staticmethod
+    def get_angle(v):
+        return np.degrees(np.arctan2(v[1], v[0]))
+
+    @staticmethod
+    def angle_diff(a1, a2):
+        diff = (a1 - a2 + 180) % 360 - 180
+        return abs(diff)
 
     @staticmethod
     def relative_speed(v1, v2) -> float:
@@ -185,15 +201,9 @@ class AccidentDetector:
                 - bboxes: list of dicts with xyxy, cls, score, tracker_id
                 - tracked_positions: {tracker_id: (cx, cy)}
                 - velocities: {tracker_id: (vx, vy)}
-                - crashes: list of crash dicts:
-                    {
-                        "pair_ids": (idA, idB),
-                        "iou": float,
-                        "rel_speed": float,
-                        "severity": "high"/"medium",
-                        "boxes": [boxA_dict, boxB_dict]
-                    }
+                - crashes: list of crash dicts
                 - cropped_images_b64: list of base64 JPEG blobs for crashed vehicles
+                - full_frame_b64: base64 JPEG of full frame (if crash)
         """
         self.frame_idx += 1
 
@@ -223,48 +233,147 @@ class AccidentDetector:
             if best_idx is not None:
                 tracker_to_box[obj.id] = boxes[best_idx]
 
-        # Compute velocities per tracker id
-        velocities = {}
+        # --- PHYSICS ANOMALY DETECTION ---
+        
+        scores = {} # id -> score
+        velocities = {} # id -> (vx, vy)
+        
+        # Calculate kinematics and anomaly scores
         for obj in tracked_objects:
-            tid = obj.id
+            cid = obj.id
             cx, cy = obj.estimate[0]
-            v = self.get_velocity(tid, (cx, cy))
-            velocities[tid] = v
+            
+            # 1. Calculate Velocity
+            curr_vel = (0.0, 0.0)
+            if cid in self.object_history:
+                prev_pos = self.object_history[cid]
+                curr_vel = (cx - prev_pos[0], cy - prev_pos[1])
+            
+            speed = np.linalg.norm(curr_vel)
+            velocities[cid] = curr_vel
+            
+            # 2. Calculate Acceleration (Deceleration) & Angle Change
+            decel_val = 0.0
+            angle_change = 0.0
+            
+            if cid in self.last_velocities:
+                prev_vel = self.last_velocities[cid]
+                prev_speed = np.linalg.norm(prev_vel)
+                
+                accel_vec = (curr_vel[0] - prev_vel[0], curr_vel[1] - prev_vel[1])
+                accel_mag = np.linalg.norm(accel_vec)
+                decel_val = accel_mag
+                
+                if speed > self.min_speed and prev_speed > self.min_speed:
+                    curr_angle = self.get_angle(curr_vel)
+                    prev_angle = self.get_angle(prev_vel)
+                    angle_change = self.angle_diff(curr_angle, prev_angle)
+            
+            # 3. Calculate Anomaly Score
+            anomaly_score = 0.0
+            if speed > self.min_speed or (cid in self.last_velocities and np.linalg.norm(self.last_velocities[cid]) > self.min_speed):
+                anomaly_score = (decel_val * self.decel_weight) + (angle_change * self.angle_weight)
+            
+            scores[cid] = anomaly_score
+            
+            # Update history
+            self.object_history[cid] = (cx, cy)
+            self.last_velocities[cid] = curr_vel
 
-        # Detect crashes between vehicle objects using tracker IDs
+        # Detect crashes
         detected_pairs = []
         now = time.time()
-        tracked_ids = list(tracker_to_box.keys())
+        
+        # Check for interactions
+        for obj in tracked_objects:
+            cid = obj.id
+            cx, cy = obj.estimate[0]
+            anomaly_score = scores.get(cid, 0.0)
+            
+            # Check for high stress (anomaly) + proximity
+            if anomaly_score > self.anomaly_thresh:
+                for other in tracked_objects:
+                    if other.id != cid:
+                        ocx, ocy = other.estimate[0]
+                        dist = np.hypot(cx - ocx, cy - ocy)
+                        
+                        if dist < self.interaction_radius:
+                            # Potential crash detected via physics
+                            # We treat this as a confirmed crash pair
+                            # To fit into existing structure, we need boxes
+                            if cid in tracker_to_box and other.id in tracker_to_box:
+                                boxA = tracker_to_box[cid]
+                                boxB = tracker_to_box[other.id]
+                                
+                                # Check if vehicles
+                                clsA, clsB = boxA[4], boxB[4]
+                                if clsA in self.vehicle_classes and clsB in self.vehicle_classes:
+                                    # Use a dummy high IoU/Speed to ensure it passes filters if we want
+                                    # Or just directly add it.
+                                    # Let's calculate real metrics for reporting
+                                    iou = self.compute_iou(boxA, boxB)
+                                    v1 = velocities.get(cid, (0,0))
+                                    v2 = velocities.get(other.id, (0,0))
+                                    rspeed = self.relative_speed(v1, v2)
+                                    
+                                    pair_id = tuple(sorted([cid, other.id]))
+                                    
+                                    # Increment counter strongly for physics detection
+                                    self.crash_counter[pair_id] += 2 # Boost count
+                                    self.pair_last_seen[pair_id] = now
+                                    
+                                    if self.crash_counter[pair_id] >= self.min_frames_to_confirm_crash:
+                                        detected_pairs.append((cid, other.id, boxA, boxB, rspeed, iou))
 
+        # Also run standard IoU/Overlap check for backup (low speed crashes or missed anomalies)
+        tracked_ids = list(tracker_to_box.keys())
         for i in range(len(tracked_ids)):
             for j in range(i + 1, len(tracked_ids)):
                 idA = tracked_ids[i]
                 idB = tracked_ids[j]
+                
+                # Skip if already detected via physics to avoid duplicates
+                # (Simple check: if we processed this pair above)
+                # Actually, the set logic below handles duplicates in detected_pairs list if we are careful
+                # But let's just run the counter logic.
+                
                 boxA = tracker_to_box[idA]
                 boxB = tracker_to_box[idB]
-
                 clsA, clsB = boxA[4], boxB[4]
+                
                 if clsA in self.vehicle_classes and clsB in self.vehicle_classes:
                     iou = self.compute_iou(boxA, boxB)
                     v1 = velocities.get(idA, (0.0, 0.0))
                     v2 = velocities.get(idB, (0.0, 0.0))
                     rspeed = self.relative_speed(v1, v2)
-
+                    
                     pair_id = tuple(sorted([idA, idB]))
-
-                    # Enforce overlap: iou must be > 0
+                    
+                    # Standard overlap condition
                     if iou > 0 and (iou > self.iou_threshold or rspeed > self.rel_speed_threshold):
-                        # Condition met this frame => increase counter
                         self.crash_counter[pair_id] += 1
                         self.pair_last_seen[pair_id] = now
-
+                        
                         if self.crash_counter[pair_id] >= self.min_frames_to_confirm_crash:
-                            detected_pairs.append((idA, idB, boxA, boxB, rspeed, iou))
-                    else:
-                        # Condition not met -> decay counter (but not below 0)
-                        self.crash_counter[pair_id] = max(
-                            0, self.crash_counter.get(pair_id, 0) - 1
-                        )
+                             detected_pairs.append((idA, idB, boxA, boxB, rspeed, iou))
+                    elif pair_id not in self.pair_last_seen or (now - self.pair_last_seen[pair_id] > 0.5):
+                         # Decay if not seen recently (physics check updates last_seen too)
+                         # If physics updated it, we don't decay here immediately
+                         pass
+
+        # Deduplicate detected pairs
+        unique_pairs = {}
+        for p in detected_pairs:
+            pid = tuple(sorted([p[0], p[1]]))
+            if pid not in unique_pairs:
+                unique_pairs[pid] = p
+        detected_pairs = list(unique_pairs.values())
+
+        # Decay counters for pairs not seen this frame
+        # We iterate all counters, if last_seen is old, we decay
+        for pid in list(self.crash_counter.keys()):
+            if now - self.pair_last_seen.get(pid, 0) > 0.1: # Not seen in last ~3 frames (at 30fps)
+                 self.crash_counter[pid] = max(0, self.crash_counter[pid] - 1)
 
         # Clean up stale pairs (not seen for > 2 seconds)
         stale_pairs = [
@@ -296,6 +405,7 @@ class AccidentDetector:
                         "cls_name": str(self.class_names.get(int(cls_id), str(cls_id))),
                         "score": float(score),
                         "tracker_id": int(tid),
+                        "anomaly_score": float(scores.get(tid, 0.0))
                     }
                 )
 
@@ -305,6 +415,11 @@ class AccidentDetector:
 
         for idA, idB, boxA, boxB, rspeed, iou in detected_pairs:
             severity = "high" if rspeed > 3.0 or iou > 0.2 else "medium"
+            # Boost severity if anomaly score is high
+            scoreA = scores.get(idA, 0.0)
+            scoreB = scores.get(idB, 0.0)
+            if scoreA > self.anomaly_thresh or scoreB > self.anomaly_thresh:
+                severity = "critical"
 
             def box_to_dict(box, tid):
                 x1, y1, x2, y2, cls_id, score = box
@@ -325,6 +440,7 @@ class AccidentDetector:
                 "rel_speed": float(rspeed),
                 "severity": severity,
                 "boxes": [boxA_dict, boxB_dict],
+                "anomaly_scores": {int(idA): float(scoreA), int(idB): float(scoreB)}
             }
             crashes.append(crash_obj)
 
