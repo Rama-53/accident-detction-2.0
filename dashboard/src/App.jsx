@@ -691,13 +691,22 @@ function App() {
 
             <div className="detail-content">
               <div className="detail-media">
-                <h3>Snapshot</h3>
+                <h3>Snapshots ({activeEvent.snapshot_count || (activeEvent.snapshot_id ? 1 : 0)})</h3>
                 {activeEvent.snapshot_id ? (
-                  <img
-                    src={`${BACKEND_URL}/snapshot/${activeEvent.snapshot_id}`}
-                    alt="Accident snapshot"
-                    className="detail-snapshot"
-                  />
+                  <div className="detail-snapshots-grid">
+                    {/* Render all available crops */}
+                    {Array.from({ length: activeEvent.snapshot_count || 1 }).map((_, idx) => (
+                      <div key={idx} className="snapshot-wrapper">
+                        <img
+                          src={`${BACKEND_URL}/snapshot/${activeEvent.snapshot_id}?crop_idx=${idx}`}
+                          alt={`Accident snapshot ${idx + 1}`}
+                          className="detail-snapshot"
+                          title={`Snapshot ${idx + 1}`}
+                        />
+                        <span className="snapshot-label">#{idx + 1}</span>
+                      </div>
+                    ))}
+                  </div>
                 ) : (
                   <div className="detail-snapshot placeholder">
                     No snapshot available

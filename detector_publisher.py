@@ -122,7 +122,23 @@ def start_mjpeg_server(port=5001):
     except Exception as e:
         print(f"[publisher] Failed to start MJPEG server: {e}")
 
-def main(video_source: str, zmq_port: int = 5556, publish_rate: float = None, camera_id: str = "cam_1", publish_only_crashes: bool = False):
+def main(
+    video_source: str, 
+    zmq_port: int = 5556, 
+    publish_rate: float = None, 
+    camera_id: str = "cam_1", 
+    publish_only_crashes: bool = False, 
+    model_path: str = "yolo11s.pt",
+    conf_thresh: float = 0.5,
+    decel_weight: float = 5.0,
+    angle_weight: float = 2.0,
+    anomaly_thresh: float = 25.0,
+    interaction_radius: float = 50.0,
+    min_speed: float = 1.0,
+    tracker_distance_threshold: float = 60.0,
+    initialization_delay: int = 10,
+    hit_counter_max: int = 25,
+):
     # Start MJPEG server in background
     t = threading.Thread(target=start_mjpeg_server, args=(5001,), daemon=True)
     t.start()
@@ -145,7 +161,18 @@ def main(video_source: str, zmq_port: int = 5556, publish_rate: float = None, ca
     if not cap.isOpened():
         raise RuntimeError(f"Cannot open video source: {video_source}")
 
-    detector = AccidentDetector()
+    detector = AccidentDetector(
+        model_path=model_path,
+        conf_thresh=conf_thresh,
+        decel_weight=decel_weight,
+        angle_weight=angle_weight,
+        anomaly_thresh=anomaly_thresh,
+        interaction_radius=interaction_radius,
+        min_speed=min_speed,
+        tracker_distance_threshold=tracker_distance_threshold,
+        initialization_delay=initialization_delay,
+        hit_counter_max=hit_counter_max
+    )
     print("[publisher] AccidentDetector initialized.")
 
     frame_idx = 0
@@ -161,6 +188,7 @@ def main(video_source: str, zmq_port: int = 5556, publish_rate: float = None, ca
                     print("[publisher] Failed to read video frame after loop.")
                     break
             frame_idx += 1
+            loop_start_tx = time.time()
 
             # process frame -> event (expected JSON-friendly structure)
             event = detector.process_frame(frame)
@@ -233,8 +261,13 @@ def main(video_source: str, zmq_port: int = 5556, publish_rate: float = None, ca
                 print(f"[publisher] published frame {frame_idx} (crashes: {crash_count})")
 
             # optional throttle to approximate real-time (seconds)
+            # Smart sleep: only wait what is left of the target frame time
             if publish_rate:
-                time.sleep(publish_rate)
+                t_end = time.time()
+                t_proc = t_end - loop_start_tx
+                t_sleep = max(0.0, publish_rate - t_proc)
+                if t_sleep > 0:
+                    time.sleep(t_sleep)
 
     except KeyboardInterrupt:
         print("\n[publisher] Interrupted by user.")
@@ -255,6 +288,35 @@ if __name__ == "__main__":
     parser.add_argument("--rate", "-r", default=None, type=float, help="Optional publish delay in seconds (e.g. 0.033 -> ~30 FPS)")
     parser.add_argument("--camera-id", default="demo_cam_1", help="Camera/source identifier embedded in events")
     parser.add_argument("--only-crashes", action="store_true", help="Publish only frames that have confirmed crashes (reduces bandwidth)")
+    parser.add_argument("--model", "-m", default="yolo11s.pt", help="Path to YOLO model (default: yolo11s.pt)")
+    
+    # Physics / Tuning Params
+    parser.add_argument("--conf-thresh", default=0.50, type=float, help="Confidence threshold (0.0-1.0)")
+    parser.add_argument("--decel-weight", default=5.0, type=float, help="Deceleration weight for anomaly score")
+    parser.add_argument("--angle-weight", default=2.0, type=float, help="Angle change weight for anomaly score")
+    parser.add_argument("--anomaly-thresh", default=25.0, type=float, help="Anomaly score threshold to trigger crash check")
+    parser.add_argument("--interaction-radius", default=50.0, type=float, help="Max distance (pixels) to consider objects interacting")
+    parser.add_argument("--min-speed", default=1.0, type=float, help="Minimum speed (pixels/frame) to calculate anomalies")
+    parser.add_argument("--tracker-dist", default=60.0, type=float, help="Norfair tracker distance threshold")
+    parser.add_argument("--init-delay", default=10, type=int, help="Frames to wait before confirming a track")
+    parser.add_argument("--hit-counter", default=25, type=int, help="Frames to keep a lost track alive")
+
     args = parser.parse_args()
 
-    main(video_source=args.video, zmq_port=args.port, publish_rate=args.rate, camera_id=args.camera_id, publish_only_crashes=args.only_crashes)
+    main(
+        video_source=args.video, 
+        zmq_port=args.port, 
+        publish_rate=args.rate, 
+        camera_id=args.camera_id, 
+        publish_only_crashes=args.only_crashes, 
+        model_path=args.model,
+        conf_thresh=args.conf_thresh,
+        decel_weight=args.decel_weight,
+        angle_weight=args.angle_weight,
+        anomaly_thresh=args.anomaly_thresh,
+        interaction_radius=args.interaction_radius,
+        min_speed=args.min_speed,
+        tracker_distance_threshold=args.tracker_dist,
+        initialization_delay=args.init_delay,
+        hit_counter_max=args.hit_counter
+    )

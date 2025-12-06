@@ -9,7 +9,7 @@ from collections import defaultdict, deque
 # Set page config
 st.set_page_config(page_title="Accident Detector Fine-Tuning (Physics-Based)", layout="wide")
 
-st.title("Accident Detector Fine-Tuning (Physics-Based)")
+st.title("Accident Detector Fine-Tuning (YOLOv11 + Physics)")
 
 # Sidebar for parameters
 st.sidebar.header("Detection Parameters")
@@ -33,7 +33,7 @@ HIT_COUNTER_MAX = st.sidebar.slider("Hit Counter Max (Frames to Keep Alive)", 1,
 # Constants
 TARGET_CLASSES = {0, 2, 3, 7}  # person, car, motorcycle, truck
 VEHICLE_CLASSES = {2, 3, 7}    # only vehicle-vehicle collisions
-YOLO_MODEL_PATH = "yolov8s.pt"
+YOLO_MODEL_PATH = "yolo11n.pt"
 VIDEO_SOURCE = "cctv_eg.mp4"
 
 # Load Model (Cached)

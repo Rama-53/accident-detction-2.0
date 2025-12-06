@@ -43,6 +43,9 @@ class AccidentDetector:
         anomaly_thresh: float = 25.0,
         interaction_radius: float = 50.0,
         min_speed: float = 1.0,
+        # Tracker tuning
+        initialization_delay: int = 10,
+        hit_counter_max: int = 25,
     ):
         """
         Initialize the accident detector.
@@ -65,6 +68,8 @@ class AccidentDetector:
             anomaly_thresh: Threshold for anomaly score to trigger crash check.
             interaction_radius: Max distance to consider a crash between two objects.
             min_speed: Minimum speed to consider for anomaly calculations.
+            initialization_delay: Frames to wait before confirming a track (reduces false positives).
+            hit_counter_max: Frames to keep a lost track alive.
         """
         self.model_path = model_path
         self.conf_thresh = conf_thresh
@@ -99,6 +104,8 @@ class AccidentDetector:
         self.tracker = norfair.Tracker(
             distance_function="mean_euclidean",
             distance_threshold=tracker_distance_threshold,
+            initialization_delay=initialization_delay,
+            hit_counter_max=hit_counter_max,
         )
 
         # Per-tracker history

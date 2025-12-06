@@ -247,6 +247,7 @@ def _doc_to_event(doc: Dict[str, Any]) -> Dict[str, Any]:
         "location_lng": location_lng,
         "snapshot_id": snapshot_id,
         "snapshot_path": snapshot_path,
+        "snapshot_count": len(crops),
     }
 
 
@@ -286,9 +287,10 @@ def list_snapshots(limit: int = 50) -> List[str]:
 
 
 @app.get("/snapshot/{accident_id}")
-def get_snapshot(accident_id: str):
+def get_snapshot(accident_id: str, crop_idx: int = 0):
     """
-    Serve the first crop image for a given accident ID as a JPEG file.
+    Serve a specific crop image for a given accident ID as a JPEG file.
+    Use ?crop_idx=N to get the N-th crop.
     """
     try:
         oid = ObjectId(accident_id)
@@ -303,7 +305,12 @@ def get_snapshot(accident_id: str):
     if not crops:
         raise HTTPException(status_code=404, detail="No crops for this accident")
 
-    file_path = crops[0].get("file")
+    if crop_idx < 0 or crop_idx >= len(crops):
+        # Fallback to 0 if out of range, or raise error?
+        # Let's raise 404 to be clear
+        raise HTTPException(status_code=404, detail=f"Crop index {crop_idx} out of range (0..{len(crops)-1})")
+
+    file_path = crops[crop_idx].get("file")
     if not file_path:
         raise HTTPException(status_code=404, detail="Crop file path missing")
 
@@ -314,10 +321,30 @@ def get_snapshot(accident_id: str):
     return FileResponse(path, media_type="image/jpeg")
 
 
+def _proxy_stream_generator(url: str) -> Generator[bytes, None, None]:
+    """
+    Proxy an MJPEG stream directly from a URL (e.g., detector output) to the client.
+    This avoids decoding and re-encoding with OpenCV, which reduces latency and CPU usage.
+    """
+    import urllib.request
+    try:
+        # Open the stream
+        stream = urllib.request.urlopen(url)
+        # Read and yield chunks indefinitely
+        while True:
+            chunk = stream.read(1024 * 8)
+            if not chunk:
+                break
+            yield chunk
+    except Exception as e:
+        print(f"[api] Error proxying stream from {url}: {e}")
+        return
+
 def _video_frame_generator(source: str) -> Generator[bytes, None, None]:
     """
     Simple frame generator that loops over a video source and yields JPEG bytes
     in multipart/x-mixed-replace format for <img src> streaming.
+    Only used for local files or webcams (not HTTP streams).
     """
     cap = cv2.VideoCapture(source)
     if not cap.isOpened():
@@ -382,10 +409,18 @@ def video_feed(source_id: str = DEFAULT_VIDEO_SOURCE_ID, source_value: Optional[
     print(f"[api] video_feed requested source_id={source_id}", flush=True)
     print(f"[api] resolved source={source}", flush=True)
 
-    return StreamingResponse(
-        _video_frame_generator(source),
-        media_type="multipart/x-mixed-replace; boundary=frame",
-    )
+    if isinstance(source, str) and source.startswith("http"):
+        # Use direct proxy for HTTP streams (detector)
+        return StreamingResponse(
+            _proxy_stream_generator(source),
+            media_type="multipart/x-mixed-replace; boundary=frame",
+        )
+    else:
+        # Use OpenCV for local files / webcams
+        return StreamingResponse(
+            _video_frame_generator(source),
+            media_type="multipart/x-mixed-replace; boundary=frame",
+        )
 
 
 @app.get("/video_sources")

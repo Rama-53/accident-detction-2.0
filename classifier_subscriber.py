@@ -37,11 +37,10 @@ class CameraState:
             self.cooldown -= 1
 
     def should_alert(self):
-        # Alert if >= 3 accidents in last 5 frames AND cooldown is 0
-        if sum(self.history) >= 3 and self.cooldown == 0:
-            self.cooldown = self.cooldown_len
-            return True
-        return False
+        # Alert if >= 3 accidents in last 5 frames
+        # We removed the internal blocking cooldown to allow external logic (subscriber) 
+        # to decide whether to group or create new alerts.
+        return sum(self.history) >= 3
 
 # Import the placeholder classifier you agreed to use
 # Make sure classifier/cnn_classifier.py contains PlaceholderClassifier
@@ -232,34 +231,82 @@ def main(zmq_host: str, zmq_port: int, mongo_uri: str, db_name: str, out_dir: st
             state.update(has_accident)
 
             if not state.should_alert():
-                if verbose and has_accident:
-                    print(f"[subscriber] skipping frame {frame_idx} - suppressed by logic (history={sum(state.history)}/5, cooldown={state.cooldown})")
-                
-                # Cleanup images if we are suppressing the alert
+                # Cleanup images if not confirmed
                 for c in crops_meta:
                     try:
                         os.remove(c["file"])
                     except OSError:
                         pass
                 continue
-            # --- Alert Logic End ---
-
-            if not crops_meta:
-                # Should be covered by should_alert() returning False if history is empty/low, 
-                # but good safety check if logic changes.
-                if verbose:
-                    print(f"[subscriber] skipping frame {frame_idx} - no accident crops found")
+            
+            # --- Throttling Logic ---
+            # Ideally we don't want to spam 30 updates/sec. 
+            # Let's limit writing/saving snapshots to once per 1.0 second per camera
+            # unless it's the very first frame of a new crash.
+            
+            # Note: We need to handle this carefully to support "grouping".
+            # If we group, we update the existing doc.
+            
+            last_write = state.last_write_ts if hasattr(state, 'last_write_ts') else 0
+            now = time.time()
+            if now - last_write < 1.0:
+                # Too soon, skip saving this frame's data to DB 
+                # (but maybe we should've skipped saving files to disk earlier? 
+                #  Yes, strictly speaking optimizing disk IO would require moving this check up, 
+                #  but for simplicity we do it here and clean up).
+                for c in crops_meta:
+                    try:
+                        os.remove(c["file"])
+                    except OSError:
+                        pass
                 continue
-
-            # Build document and insert into MongoDB
-            doc = build_mongo_doc(camera_id, frame_idx, ts_utc, event, crops_meta)
-            try:
-                res = accidents_col.insert_one(doc)
-                if verbose:
-                    print(f"[subscriber] inserted accident doc _id={res.inserted_id} cam={camera_id} frame={frame_idx} crops={len(crops_meta)}")
-            except Exception as e:
-                print(f"[subscriber] MongoDB insert failed: {e}")
-                traceback.print_exc()
+            
+            # Update write timestamp
+            state.last_write_ts = now
+            
+            # --- DB Grouping Logic ---
+            # Check for recent active alert (within 20 seconds)
+            
+            latest_alert = accidents_col.find_one(
+                {"camera_id": camera_id},
+                sort=[("inserted_at", -1)]
+            )
+            
+            should_group = False
+            if latest_alert:
+                delta = (datetime.utcnow() - latest_alert["inserted_at"]).total_seconds()
+                if delta < 10.0:
+                    should_group = True
+            
+            if should_group:
+                # Update existing alert
+                try:
+                    res = accidents_col.update_one(
+                        {"_id": latest_alert["_id"]},
+                        {
+                            "$push": {"crops": {"$each": crops_meta}},
+                            "$set": {"last_updated": datetime.utcnow()} # Update timestamp to keep window alive?
+                            # Request said "detected -> next 20 sec". 
+                            # Usually this means a fixed window from START. 
+                            # If we update 'inserted_at', it becomes a rolling window (keeps extending).
+                            # User said "when accident detected, then next 20s". Implies fixed window from first detection.
+                            # So we do NOT update 'inserted_at'.
+                        }
+                    )
+                    if verbose:
+                        print(f"[subscriber] GROUPED frame {frame_idx} into alert {latest_alert['_id']} (crops+{len(crops_meta)})")
+                except Exception as e:
+                    print(f"[subscriber] MongoDB update failed: {e}")
+            else:
+                # Create NEW alert
+                doc = build_mongo_doc(camera_id, frame_idx, ts_utc, event, crops_meta)
+                try:
+                    res = accidents_col.insert_one(doc)
+                    if verbose:
+                        print(f"[subscriber] INSERTED NEW alert {res.inserted_id} cam={camera_id} crops={len(crops_meta)}")
+                except Exception as e:
+                    print(f"[subscriber] MongoDB insert failed: {e}")
+                    traceback.print_exc()
 
     except KeyboardInterrupt:
         print("[subscriber] interrupted by user")
