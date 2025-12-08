@@ -18,6 +18,7 @@ a {
   color: #646cff;
   text-decoration: inherit;
 }
+
 a:hover {
   color: #535bf2;
 }
@@ -46,9 +47,11 @@ button {
   cursor: pointer;
   transition: border-color 0.25s;
 }
+
 button:hover {
   border-color: #646cff;
 }
+
 button:focus,
 button:focus-visible {
   outline: 4px auto -webkit-focus-ring-color;
@@ -59,13 +62,16 @@ button:focus-visible {
     color: #213547;
     background-color: #ffffff;
   }
+
   a:hover {
     color: #747bff;
   }
+
   button {
     background-color: #f9f9f9;
   }
 }
+
 /* Shared styling for the full dashboard */
 
 body {
@@ -83,3 +89,72 @@ code {
 }
 
 /* Everything else is included inline inside App.jsx styles */
+
+.camera-map-name-input,
+.camera-map-location-input {
+  background: transparent;
+  border: 1px solid transparent;
+  color: inherit;
+  font-family: inherit;
+  padding: 4px;
+  border-radius: 4px;
+  width: 100%;
+}
+
+.camera-map-name-input:hover,
+.camera-map-location-input:hover,
+.camera-map-name-input:focus,
+.camera-map-location-input:focus {
+  border-color: #646cff;
+  background: rgba(255, 255, 255, 0.05);
+  outline: none;
+}
+
+.camera-map-name-input {
+  font-size: 1.2rem;
+  font-weight: bold;
+  margin-bottom: 4px;
+}
+
+
+.suggestions-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: #333;
+  border: 1px solid #555;
+  border-radius: 4px;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  z-index: 1000;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.suggestions-dropdown li {
+  padding: 8px;
+  cursor: pointer;
+  border-bottom: 1px solid #444;
+  font-size: 0.9em;
+}
+
+.suggestions-dropdown li:hover {
+  background: #444;
+}
+
+.detection-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.detection-toggle input {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}

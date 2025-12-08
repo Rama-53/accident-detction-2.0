@@ -24,7 +24,12 @@ import zmq
 from PIL import Image
 from pymongo import MongoClient
 from collections import deque
+import pandas as pd
+import easyocr
+from ultralytics import YOLO
+import numpy as np
 
+import cv2
 class CameraState:
     def __init__(self, history_len=5, cooldown_len=10):
         self.history = deque(maxlen=history_len)
@@ -83,7 +88,7 @@ def save_pil_to_path(pil_img: Image.Image, path: Path, quality: int = 85) -> Non
 
 def build_mongo_doc(camera_id, frame_idx, detector_ts, event, crops_meta):
     """Build the document to insert into MongoDB."""
-    return {
+    doc = {
         "camera_id": camera_id,
         "frame_idx": frame_idx,
         "detector_ts": datetime.utcfromtimestamp(detector_ts) if isinstance(detector_ts, (int, float)) else detector_ts,
@@ -94,6 +99,14 @@ def build_mongo_doc(camera_id, frame_idx, detector_ts, event, crops_meta):
         "crops": crops_meta,
         "raw_event": event  # keep for debugging; remove or trim in production if large
     }
+    # Hoist location metadata to top-level if present
+    if "location" in event:
+        doc["location"] = event["location"]
+    if "location_lat" in event:
+        doc["location_lat"] = event["location_lat"]
+    if "location_lng" in event:
+        doc["location_lng"] = event["location_lng"]
+    return doc
 
 
 def main(zmq_host: str, zmq_port: int, mongo_uri: str, db_name: str, out_dir: str, verbose: bool = True):
@@ -115,6 +128,19 @@ def main(zmq_host: str, zmq_port: int, mongo_uri: str, db_name: str, out_dir: st
     sock.setsockopt_string(zmq.SUBSCRIBE, "")  # subscribe to everything
     if verbose:
         print(f"[subscriber] connected SUB -> {connect_addr}")
+
+    # --- LPR Initialization ---
+    try:
+        lp_model = YOLO("license_plate_detector.pt")
+        ocr_reader = easyocr.Reader(['en'], gpu=True) # or gpu=False if no GPU
+        contacts_df = pd.read_excel("emergency_contacts.xlsx")
+        # Ensure license plate column is string and clean
+        contacts_df['LicensePlate'] = contacts_df['LicensePlate'].astype(str).str.strip().str.upper()
+        if verbose:
+            print("[subscriber] LPR system initialized (Model + OCR + Contacts)")
+    except Exception as e:
+        print(f"[subscriber] WARNING: LPR init failed: {e}")
+        lp_model = None
 
     classifier = AccidentClassifier()
     if verbose:
@@ -221,6 +247,75 @@ def main(zmq_host: str, zmq_port: int, mongo_uri: str, db_name: str, out_dir: st
                         pass
             
             crops_meta = accident_crops
+
+            # --- License Plate Recognition Logic ---
+            # Run ONLY if we have accident crops and LPR is loaded.
+            # Ideally run this only once per vehicle per accident, but for now run on every frame 
+            # that we are about to process. (Optimally, check if already identified).
+            
+            if lp_model:
+                for c in crops_meta:
+                    try:
+                        # 1. Load image again (or keep in memory)
+                        # We have c["file"]
+                        # Run LP detection on the VEHICLE crop
+                        
+                        # Note: The vehicle crop might range from small to large.
+                        # Ideally we run on the high-res crop.
+                        
+                        veh_img = cv2.imread(c["file"])
+                        if veh_img is None: continue
+                        
+                        # Ultralytics expects numpy/path
+                        lp_results = lp_model(veh_img, verbose=False)[0]
+                        
+                        detected_plate_text = None
+                        
+                        for box in lp_results.boxes:
+                            # 2. Crop the plate
+                            x1, y1, x2, y2 = box.xyxy[0].cpu().numpy().astype(int)
+                            plate_crop = veh_img[y1:y2, x1:x2]
+                            
+                            if plate_crop.size == 0: continue
+
+                            # 3. OCR
+                            # enhance?
+                            # gray = cv2.cvtColor(plate_crop, cv2.COLOR_BGR2GRAY)
+                            
+                            # easyocr: detail=0 returns list of strings
+                            ocr_res = ocr_reader.readtext(plate_crop, detail=0, allowlist='ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789')
+                            
+                            if ocr_res:
+                                # take the longest string or join? usually just one plate
+                                candidate = "".join(ocr_res).upper().strip()
+                                if len(candidate) > 3: # min length filter
+                                    detected_plate_text = candidate
+                                    break # assume one plate per car crop
+                        
+                        if detected_plate_text:
+                            c["license_plate"] = detected_plate_text
+                            if verbose:
+                                print(f"[subscriber] Detected Plate: {detected_plate_text}")
+                            
+                            # 4. Lookup Contact
+                            # exact match? or partial? let's do exact for now.
+                            match = contacts_df[contacts_df['LicensePlate'] == detected_plate_text]
+                            if not match.empty:
+                                owner = match.iloc[0]['OwnerName']
+                                phone = match.iloc[0]['Phone']
+                                email = match.iloc[0]['Email']
+                                c["contact_info"] = {
+                                    "owner": owner,
+                                    "phone": phone,
+                                    "email": email
+                                }
+                                # Trigger Alert (Simulated)
+                                alert_msg = f"*** ALERT SENT *** Accident detected for {owner} ({detected_plate_text}). Calling {phone}..."
+                                c["alert_status"] = "sent"
+                                if verbose:
+                                    print(alert_msg)
+                    except Exception as e:
+                        print(f"[subscriber] LPR error: {e}")
 
             # --- Alert Logic Start ---
             if camera_id not in camera_states:

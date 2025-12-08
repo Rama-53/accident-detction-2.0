@@ -136,7 +136,17 @@ VIDEO_SOURCES: Dict[str, Dict[str, Any]] = {
 }
 DEFAULT_VIDEO_SOURCE_ID = "demo_clip"
 
+from pydantic import BaseModel
+
+class CameraConfig(BaseModel):
+    name: Optional[str] = None
+    location: Optional[str] = None
+    lat: Optional[float] = None
+    lng: Optional[float] = None
+    detection_enabled: Optional[bool] = False
+
 CAMERA_METADATA: Dict[str, Dict[str, Any]] = {}
+# 1. Initialize from hardcoded config
 for cfg in VIDEO_SOURCES.values():
     cam_id = cfg.get("camera_id")
     if not cam_id:
@@ -147,6 +157,58 @@ for cfg in VIDEO_SOURCES.values():
         "lat": cfg.get("location_lat"),
         "lng": cfg.get("location_lng"),
     }
+
+# 2. Apply overrides from MongoDB
+try:
+    for stored_cam in db.cameras.find():
+        c_id = stored_cam.get("camera_id")
+        if c_id:
+            if c_id not in CAMERA_METADATA:
+                CAMERA_METADATA[c_id] = {}
+            # Update fields if present in DB
+            for f in ["name", "location", "lat", "lng", "detection_enabled"]:
+                if stored_cam.get(f) is not None:
+                    CAMERA_METADATA[c_id][f] = stored_cam.get(f)
+    print(f"[api] Loaded {db.cameras.count_documents({})} camera overrides from DB")
+except Exception as e:
+    print(f"[api] Failed to load camera overrides: {e}")
+
+
+@app.post("/cameras/{camera_id}")
+def update_camera_config(camera_id: str, config: CameraConfig):
+    """
+    Update camera metadata (name, location) and persist to MongoDB.
+    """
+    # 1. Update in-memory
+    if camera_id not in CAMERA_METADATA:
+        CAMERA_METADATA[camera_id] = {}
+    
+    update_data = {}
+    if config.name is not None:
+        CAMERA_METADATA[camera_id]["name"] = config.name
+        update_data["name"] = config.name
+    if config.location is not None:
+        CAMERA_METADATA[camera_id]["location"] = config.location
+        update_data["location"] = config.location
+    if config.lat is not None:
+        CAMERA_METADATA[camera_id]["lat"] = config.lat
+        update_data["lat"] = config.lat
+    if config.lng is not None:
+        CAMERA_METADATA[camera_id]["lng"] = config.lng
+        update_data["lng"] = config.lng
+    if config.detection_enabled is not None:
+        CAMERA_METADATA[camera_id]["detection_enabled"] = config.detection_enabled
+        update_data["detection_enabled"] = config.detection_enabled
+
+    # 2. Persist to MongoDB
+    if update_data:
+        db.cameras.update_one(
+            {"camera_id": camera_id},
+            {"$set": update_data},
+            upsert=True
+        )
+    
+    return {"status": "updated", "camera_id": camera_id, "current_config": CAMERA_METADATA[camera_id]}
 
 
 @app.get("/health")
@@ -173,6 +235,15 @@ def get_accidents(camera_id: Optional[str] = None, limit: int = 50):
     for d in docs:
         d["_id"] = str(d["_id"])
     return JSONResponse(content={"count": len(docs), "items": docs})
+
+
+@app.delete("/accidents")
+def delete_accidents():
+    """
+    Clear all accident records from the database.
+    """
+    res = db.accidents.delete_many({})
+    return {"status": "deleted", "count": res.deleted_count}
 
 
 def _doc_to_event(doc: Dict[str, Any]) -> Dict[str, Any]:
@@ -430,21 +501,41 @@ def video_sources():
     """
     options = []
     for source_id, cfg in VIDEO_SOURCES.items():
+        # Start with defaults from config
+        label = cfg.get("label", source_id)
+        cam_id = cfg.get("camera_id")
+        cam_name = cfg.get("camera_name")
+        loc = cfg.get("location")
+        lat = cfg.get("location_lat")
+        lng = cfg.get("location_lng")
+
+        # Overlay dynamic metadata if available
+        if cam_id and cam_id in CAMERA_METADATA:
+            meta = CAMERA_METADATA[cam_id]
+            if meta.get("name"):
+                cam_name = meta.get("name")
+            if meta.get("location"):
+                loc = meta.get("location")
+            if meta.get("lat") is not None:
+                lat = meta.get("lat")
+            if meta.get("lng") is not None:
+                lng = meta.get("lng")
+
         options.append(
             {
                 "id": source_id,
-                "label": cfg.get("label", source_id),
+                "label": label,
                 "type": cfg.get("type", "unknown"),
                 "description": cfg.get("description", ""),
                 "is_default": source_id == DEFAULT_VIDEO_SOURCE_ID,
                 "requires_value": bool(cfg.get("requires_value")),
                 "value_hint": cfg.get("value_hint", ""),
                 "value_type": cfg.get("value_type", "text"),
-                "camera_id": cfg.get("camera_id"),
-                "camera_name": cfg.get("camera_name"),
-                "location": cfg.get("location"),
-                "location_lat": cfg.get("location_lat"),
-                "location_lng": cfg.get("location_lng"),
+                "camera_id": cam_id,
+                "camera_name": cam_name,
+                "location": loc,
+                "location_lat": lat,
+                "location_lng": lng,
             }
         )
     return options
