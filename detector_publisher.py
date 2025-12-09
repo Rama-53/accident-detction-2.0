@@ -213,8 +213,8 @@ def main(
 
             if not detection_active:
                 # Pass-through mode: No inference, just stream raw video
-                # if frame_idx % 30 == 0:
-                #      print(f"[publisher] Detection disabled (config={detection_active}), skipping inference.")
+                if frame_idx % 30 == 0:
+                     print(f"[publisher] Detection disabled (config={detection_active}), skipping inference.")
                 cv2.putText(
                     stream_img,
                     "DETECTION PAUSED",
