@@ -323,14 +323,16 @@ class AccidentDetector:
                                     v2 = velocities.get(other.id, (0,0))
                                     rspeed = self.relative_speed(v1, v2)
                                     
-                                    pair_id = tuple(sorted([cid, other.id]))
-                                    
-                                    # Increment counter strongly for physics detection
-                                    self.crash_counter[pair_id] += 2 # Boost count
-                                    self.pair_last_seen[pair_id] = now
-                                    
-                                    if self.crash_counter[pair_id] >= self.min_frames_to_confirm_crash:
-                                        detected_pairs.append((cid, other.id, boxA, boxB, rspeed, iou))
+                                    # Enforce overlap condition
+                                    if iou > 0:
+                                        pair_id = tuple(sorted([cid, other.id]))
+                                        
+                                        # Increment counter strongly for physics detection
+                                        self.crash_counter[pair_id] += 2 # Boost count
+                                        self.pair_last_seen[pair_id] = now
+                                        
+                                        if self.crash_counter[pair_id] >= self.min_frames_to_confirm_crash:
+                                            detected_pairs.append((cid, other.id, boxA, boxB, rspeed, iou))
 
         # Also run standard IoU/Overlap check for backup (low speed crashes or missed anomalies)
         tracked_ids = list(tracker_to_box.keys())
