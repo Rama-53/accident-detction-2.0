@@ -6,31 +6,38 @@ This document explains how the Accident Detection System processes video data fr
 
 ```mermaid
 graph TD
-    Video[Video Source<br>(CCTV/Webcam)] -->|Frames| Publisher[detector_publisher.py]
+    Video["Video Source<br>(CCTV/Webcam)"] -->|Frames| Publisher[detector_publisher.py]
     
     subgraph Detection Node
-        Publisher -->|Raw Frame| Detector[detector/detector.py]
-        Detector -->|YOLOv11 + Norfair| Tracking[Object Tracking]
-        Tracking -->|Physics Logic| CrashCheck{Crash?}
+        Publisher -->|"Raw Frame"| Detector[detector/detector.py]
+        Detector -->|"YOLOv11 + Norfair"| Tracking[Object Tracking]
+        Tracking -->|"Physics Logic"| CrashCheck{Crash?}
         CrashCheck -->|Yes| Event[Accident Event]
         CrashCheck -->|No| Safe[Safe Event]
+        
+        %% Config Loop
+        DB[(MongoDB)] .->|"Poll Config"| Publisher
     end
 
-    Publisher -->|MJPEG Stream| Dashboard[Dashboard UI]
-    Publisher -->|ZeroMQ (JSON)| Subscriber[classifier_subscriber.py]
+    Publisher -->|"MJPEG Stream"| Dashboard["Dashboard UI"]
+    Publisher -->|"ZeroMQ (JSON)"| Subscriber[classifier_subscriber.py]
 
     subgraph Processing Node
-        Subscriber -->|Receive Event| Filter{Is Crash?}
-        Filter -->|Yes| Cropper[Crop Image]
-        Cropper -->|Image| Classifier[classifier/cnn_classifier.py]
-        Cropper -->|Image| LPR[License Plate Recog]
-        Classifier -->|Severity| DB[(MongoDB)]
-        LPR -->|Plate Number| DB
+        Subscriber -->|"Receive Event"| Filter{Is Crash?}
+        Filter -->|Yes| Buffer[10-Frame Buffer]
+        Buffer -->|"Thresh >= 7"| Confirmed{Confirmed?}
+        Confirmed -->|Yes| Alert[Full Frame Alert]
+        Alert -->|Write| DB
+        
+        %% Crop logic disabled per user request
+        %% Confirmed -->|Crop| LPR[License Plate Recog]
     end
 
     subgraph Backend API
         DB -->|Query| API[services/api_server.py]
-        API -->|JSON Data| Dashboard
+        API -->|"JSON Data"| Dashboard
+        Dashboard -->|"Toggle Detection"| API
+        API -->|"Update Config"| DB
     end
 ```
 
