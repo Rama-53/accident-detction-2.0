@@ -76,26 +76,7 @@ VIDEO_SOURCES: Dict[str, Dict[str, Any]] = {
         "camera_name": "Detector Live View",
         "location": "Processing Node",
     },
-    "webcam_0": {
-        "label": "Default webcam (index 0)",
-        "type": "webcam",
-        "description": "Built-in or primary USB webcam",
-        "source": 0,
-        "requires_value": False,
-        "camera_id": "webcam_0",
-        "camera_name": "Control Room Webcam",
-        "location": "Operations HQ",
-    },
-    "webcam_1": {
-        "label": "Second webcam (index 1)",
-        "type": "webcam",
-        "description": "Secondary USB webcam (edit index if needed)",
-        "source": 1,
-        "requires_value": False,
-        "camera_id": "webcam_1",
-        "camera_name": "Auxiliary Webcam",
-        "location": "Spare Lab Cam",
-    },
+
     "ip_cam_example": {
         "label": "IP camera (RTSP example)",
         "type": "ip",
@@ -211,6 +192,73 @@ def update_camera_config(camera_id: str, config: CameraConfig):
     return {"status": "updated", "camera_id": camera_id, "current_config": CAMERA_METADATA[camera_id]}
 
 
+    return {"status": "updated", "camera_id": camera_id, "current_config": CAMERA_METADATA[camera_id]}
+
+
+class CustomSourceModel(BaseModel):
+    id: str  # unique ID, e.g. "cam_99"
+    label: str
+    type: str # "webcam" or "ip" or "file"
+    source: str # index for webcam (as string), or URL for ip/file
+    description: Optional[str] = ""
+
+@app.post("/video_sources")
+def create_video_source(src: CustomSourceModel):
+    """
+    Create a new video source dynamically and persist to MongoDB.
+    """
+    if src.id in VIDEO_SOURCES:
+        raise HTTPException(status_code=400, detail="Source ID already exists")
+
+    # 1. Save to DB
+    doc = src.dict()
+    db.video_sources.update_one({"id": src.id}, {"$set": doc}, upsert=True)
+
+    # 2. Update in-memory VIDEO_SOURCES
+    # Convert source for webcam if digit
+    final_source = src.source
+    if src.type == "webcam" and str(final_source).isdigit():
+        final_source = int(final_source)
+
+    VIDEO_SOURCES[src.id] = {
+        "label": src.label,
+        "type": src.type,
+        "description": src.description,
+        "source": final_source,
+        "requires_value": False, # Dynamic sources are concrete
+        "camera_id": src.id,
+        "camera_name": src.label,
+        "location": "Custom",
+    }
+    
+    return {"status": "created", "id": src.id}
+
+
+# 3. Load custom sources from DB on startup
+try:
+    for csrc in db.video_sources.find():
+        sid = csrc.get("id")
+        if sid:
+            final_source = csrc.get("source")
+            # fix type for webcam
+            if csrc.get("type") == "webcam" and str(final_source).isdigit():
+                final_source = int(final_source)
+
+            VIDEO_SOURCES[sid] = {
+                "label": csrc.get("label"),
+                "type": csrc.get("type"),
+                "description": csrc.get("description"),
+                "source": final_source,
+                "requires_value": False,
+                "camera_id": sid,
+                "camera_name": csrc.get("label"),
+                "location": "Custom",
+            }
+    print(f"[api] Loaded {db.video_sources.count_documents({})} custom sources from DB")
+except Exception as e:
+    print(f"[api] Failed to load custom video sources: {e}")
+
+
 @app.get("/health")
 def health() -> Dict[str, str]:
     return {"status": "ok"}
@@ -317,6 +365,7 @@ def _doc_to_event(doc: Dict[str, Any]) -> Dict[str, Any]:
         "location_lat": location_lat,
         "location_lng": location_lng,
         "snapshot_id": snapshot_id,
+        "snapshot_url": f"/snapshot/{_id}" if crops else None,
         "snapshot_path": snapshot_path,
         "snapshot_count": len(crops),
     }
@@ -387,7 +436,10 @@ def get_snapshot(accident_id: str, crop_idx: int = 0):
 
     path = Path(file_path)
     if not path.exists():
-        raise HTTPException(status_code=404, detail="Crop file not found on disk")
+        # Try resolving relative to PROJECT_ROOT
+        path = PROJECT_ROOT / file_path
+        if not path.exists():
+            raise HTTPException(status_code=404, detail="Crop file not found on disk")
 
     return FileResponse(path, media_type="image/jpeg")
 
@@ -494,13 +546,84 @@ def video_feed(source_id: str = DEFAULT_VIDEO_SOURCE_ID, source_value: Optional[
         )
 
 
+
+import concurrent.futures
+import socket
+import urllib.request
+
+def is_source_reachable(cfg: Dict[str, Any]) -> bool:
+    """
+    Quickly check if a source is reachable.
+    """
+    try:
+        sType = cfg.get("type")
+        source = cfg.get("source")
+        
+        # 1. File
+        if sType == "file": 
+            if isinstance(source, str):
+                return Path(source).exists()
+            return False
+
+        # 2. IP / HTTP
+        if isinstance(source, str) and (source.startswith("http") or source.startswith("rtsp")):
+            # Quick HTTP check
+            if source.startswith("http"):
+                try:
+                    # just check if we can connect, 1s timeout
+                    with urllib.request.urlopen(source, timeout=1.5) as conn:
+                        return conn.status == 200
+                except:
+                    return False
+            
+            # Quick RTSP/Socket check (naive parsing)
+            # rtsp://user:pass@host:port/path
+            # Just try to parse host/port
+            try:
+                # remove protocol
+                clean = source.split("://")[1]
+                # remove path
+                if "/" in clean:
+                    clean = clean.split("/")[0]
+                # remove credentials
+                if "@" in clean:
+                    clean = clean.split("@")[1]
+                
+                parts = clean.split(":")
+                host = parts[0]
+                port = int(parts[1]) if len(parts) > 1 else 554
+                
+                with socket.create_connection((host, port), timeout=1.5):
+                    return True
+            except:
+                return False
+
+        # 3. Webcam - assume available if index is valid int? 
+        # Opening fails on server if no cam. 
+        # Let's skip heavy check for now and assume True for local dev, 
+        # or try checking /dev/videoN on linux / generic check?
+        # For Windows, checking if capture opens is reliable but slow.
+        if sType == "webcam":
+            return True
+
+        return True
+    except Exception:
+        return False
+
 @app.get("/video_sources")
 def video_sources():
     """
     Expose configured video sources so the dashboard can render a dropdown.
+    Checks availability in parallel.
     """
     options = []
-    for source_id, cfg in VIDEO_SOURCES.items():
+    
+    # Helper to process one item
+    def process_source(item):
+        source_id, cfg = item
+        # Clone cfg to avoid race? dicts are thread-safe(ish) for reading but valid concern.
+        # Actually we just read.
+        
         # Start with defaults from config
         label = cfg.get("label", source_id)
         cam_id = cfg.get("camera_id")
@@ -520,23 +643,35 @@ def video_sources():
                 lat = meta.get("lat")
             if meta.get("lng") is not None:
                 lng = meta.get("lng")
+        
+        # Check availability
+        # Skip check if requires_value is True (it's a template)
+        is_available = True
+        if not cfg.get("requires_value"):
+            is_available = is_source_reachable(cfg)
 
-        options.append(
-            {
-                "id": source_id,
-                "label": label,
-                "type": cfg.get("type", "unknown"),
-                "description": cfg.get("description", ""),
-                "is_default": source_id == DEFAULT_VIDEO_SOURCE_ID,
-                "requires_value": bool(cfg.get("requires_value")),
-                "value_hint": cfg.get("value_hint", ""),
-                "value_type": cfg.get("value_type", "text"),
-                "camera_id": cam_id,
-                "camera_name": cam_name,
-                "location": loc,
-                "location_lat": lat,
-                "location_lng": lng,
-                "detection_enabled": CAMERA_METADATA.get(cam_id, {}).get("detection_enabled", True) if cam_id else True
-            }
-        )
-    return options
+        return {
+            "id": source_id,
+            "label": label,
+            "type": cfg.get("type", "unknown"),
+            "description": cfg.get("description", ""),
+            "is_default": source_id == DEFAULT_VIDEO_SOURCE_ID,
+            "requires_value": bool(cfg.get("requires_value")),
+            "value_hint": cfg.get("value_hint", ""),
+            "value_type": cfg.get("value_type", "text"),
+            "camera_id": cam_id,
+            "camera_name": cam_name,
+            "location": loc,
+            "location_lat": lat,
+            "location_lng": lng,
+            "detection_enabled": CAMERA_METADATA.get(cam_id, {}).get("detection_enabled", True) if cam_id else True,
+            "available": is_available
+        }
+
+    # Run checks in parallel to minimize latency
+    with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+        results = list(executor.map(process_source, VIDEO_SOURCES.items()))
+    
+    # Sort by ID or label to keep stable order
+    results.sort(key=lambda x: x["id"])
+    return results

@@ -1,236 +1,112 @@
-// src/App.jsx
 import { useEffect, useState, useRef } from "react";
-import { MapContainer, TileLayer, Marker, useMapEvents } from "react-leaflet";
-import "leaflet/dist/leaflet.css";
-import L from "leaflet";
-
-// Fix for default marker icon in React Leaflet
-delete L.Icon.Default.prototype._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png",
-  iconUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png",
-  shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png",
-});
-import "./App.css";
+import { motion, AnimatePresence } from "framer-motion";
+import { AlertTriangle, Video, Map as MapIcon, Image as ImageIcon } from "lucide-react";
+import "./App.css"; // We still keep this for some basic overrides or legacy if needed
 import { BACKEND_URL } from "./config";
 
-const MAX_MULTI_FEEDS = 4;
+// Components
+import Sidebar from "./components/Sidebar";
+import LiveFeed from "./components/LiveFeed";
+import RecentAlerts from "./components/RecentAlerts";
+import StatsCard from "./components/StatsCard";
+import CameraMap from "./components/CameraMap";
+import MultiCameraWall from "./components/MultiCameraWall";
 
 function App() {
   const [status, setStatus] = useState("Unavailable");
   const [events, setEvents] = useState([]);
-  const [snapshots, setSnapshots] = useState([]);
+  const [snapshots, setSnapshots] = useState([]); // Kept for gallery if needed
   const [cameras, setCameras] = useState([]);
   const [selectedCamera, setSelectedCamera] = useState("");
+
+  // Video Source State
   const [videoSources, setVideoSources] = useState([]);
   const [selectedVideoSource, setSelectedVideoSource] = useState("");
   const [videoSourceValues, setVideoSourceValues] = useState({});
   const [multiSourceIds, setMultiSourceIds] = useState([]);
   const [cameraMetaValues, setCameraMetaValues] = useState({});
+
   const [activeEvent, setActiveEvent] = useState(null);
   const [activeTab, setActiveTab] = useState("dashboard");
   const [showIntro, setShowIntro] = useState(true);
 
-  // Fetch backend status
+  // Poll Backend Status
   useEffect(() => {
     async function fetchStatus() {
       try {
         const res = await fetch(`${BACKEND_URL}/status`);
-        const data = await res.json(); // { status: "Running" }
+        const data = await res.json();
         setStatus(data.status || "Unknown");
       } catch (err) {
-        console.error("Error fetching status:", err);
         setStatus("Unavailable");
       }
     }
-
     fetchStatus();
     const id = setInterval(fetchStatus, 5000);
     return () => clearInterval(id);
   }, []);
 
-  // Fetch events
+  // Poll Events
   useEffect(() => {
     async function fetchEvents() {
       try {
-        const query =
-          selectedCamera && selectedCamera !== "all"
-            ? `?camera_id=${encodeURIComponent(selectedCamera)}`
-            : "";
+        const query = selectedCamera && selectedCamera !== "all"
+          ? `?camera_id=${encodeURIComponent(selectedCamera)}`
+          : "";
         const res = await fetch(`${BACKEND_URL}/events${query}`);
         const data = await res.json();
         setEvents(data);
       } catch (err) {
-        console.error("Error fetching events:", err);
+        console.error("Error fetching events", err);
       }
     }
-
     fetchEvents();
-    const id = setInterval(fetchEvents, 500);
+    const id = setInterval(fetchEvents, 2000); // 2s poll
     return () => clearInterval(id);
   }, [selectedCamera]);
 
-  // Fetch available cameras (for filter)
-  useEffect(() => {
-    async function fetchCameras() {
-      try {
-        const res = await fetch(`${BACKEND_URL}/cameras`);
-        const data = await res.json();
-        setCameras(data);
-      } catch (err) {
-        console.error("Error fetching cameras:", err);
-      }
-    }
+  // Fetch Video Sources
+  const fetchVideoSources = async () => {
+    try {
+      const res = await fetch(`${BACKEND_URL}/video_sources`);
+      const data = await res.json();
+      setVideoSources(data);
 
-    fetchCameras();
-    const id = setInterval(fetchCameras, 10000);
-    return () => clearInterval(id);
-  }, []);
-
-  // Fetch snapshots list
-  useEffect(() => {
-    async function fetchSnaps() {
-      try {
-        const res = await fetch(`${BACKEND_URL}/snapshots`);
-        const data = await res.json();
-        setSnapshots(data);
-      } catch (err) {
-        console.error("Error fetching snapshots:", err);
-      }
-    }
-
-    fetchSnaps();
-    const id = setInterval(fetchSnaps, 5000);
-    return () => clearInterval(id);
-  }, []);
-
-  useEffect(() => {
-    if (!activeEvent) return;
-    const updated = events.find((evt) => evt.id === activeEvent.id);
-    if (updated && updated !== activeEvent) {
-      setActiveEvent(updated);
-    }
-  }, [events, activeEvent]);
-
-  // Fetch available video sources for live feed preview
-  useEffect(() => {
-    async function fetchVideoSources() {
-      try {
-        const res = await fetch(`${BACKEND_URL}/video_sources`);
-        const data = await res.json();
-        setVideoSources(data);
-        setCameraMetaValues((prev) => {
-          const next = { ...prev };
-          data.forEach((src) => {
-            if (!next[src.id]) {
-              next[src.id] = {
-                name: src.camera_name || "",
-                location: src.location || "",
-                detection_enabled: src.detection_enabled,
-              };
-            }
-          });
-          return next;
+      // Populate Meta Values
+      setCameraMetaValues((prev) => {
+        const next = { ...prev };
+        data.forEach((src) => {
+          if (!next[src.id]) { // only if not already there
+            next[src.id] = {
+              name: src.camera_name || "",
+              location: src.location || "",
+              detection_enabled: src.detection_enabled,
+              lat: src.location_lat,
+              lng: src.location_lng
+            };
+          }
         });
-        if (data.length > 0) {
-          const defaultOption =
-            data.find((opt) => opt.is_default) || data[0];
-          setSelectedVideoSource((prev) => prev || defaultOption.id);
-          setMultiSourceIds((prev) =>
-            prev.length > 0 ? prev : [defaultOption.id]
-          );
-        }
-      } catch (err) {
-        console.error("Error fetching video sources:", err);
-      }
+        return next;
+      });
+    } catch (err) {
+      console.error("Error fetching sources", err);
     }
+  };
 
+  useEffect(() => {
     fetchVideoSources();
     const id = setInterval(fetchVideoSources, 15000);
     return () => clearInterval(id);
   }, []);
 
-  const getSourceMeta = (sourceId) =>
-    videoSources.find((src) => src.id === sourceId);
-
-  const getSourceValue = (sourceId) =>
-    (sourceId && videoSourceValues[sourceId]) || "";
-
-  const sourceHasRequiredValue = (sourceId) => {
-    const meta = getSourceMeta(sourceId);
-    if (!meta) return false;
-    if (!meta.requires_value) return true;
-    return getSourceValue(sourceId).trim().length > 0;
-  };
-
-  const buildFeedUrl = (sourceId) => {
-    if (!sourceId) return `${BACKEND_URL}/video_feed`;
-    const meta = getSourceMeta(sourceId);
-    const params = new URLSearchParams();
-    params.set("source_id", sourceId);
-    if (meta?.requires_value) {
-      const val = getSourceValue(sourceId).trim();
-      if (val) {
-        params.set("source_value", val);
-      }
+  // One-time effect to set default video source if not set
+  useEffect(() => {
+    if (videoSources.length > 0 && !selectedVideoSource) {
+      const defaultOption = videoSources.find((opt) => opt.is_default) || videoSources[0];
+      setSelectedVideoSource(defaultOption.id);
+      if (multiSourceIds.length === 0) setMultiSourceIds([defaultOption.id]);
     }
-    const query = params.toString();
-    return `${BACKEND_URL}/video_feed${query ? `?${query}` : ""}`;
-  };
-
-  const currentVideoSource = getSourceMeta(selectedVideoSource);
-  const currentRequiresValue = currentVideoSource?.requires_value;
-  const currentValue = getSourceValue(selectedVideoSource);
-  const hasValueReady = selectedVideoSource && sourceHasRequiredValue(selectedVideoSource);
-
-  const getCameraInfo = (sourceId) => {
-    if (!sourceId) {
-      return { name: "", location: "", lat: null, lng: null };
-    }
-    const meta = getSourceMeta(sourceId) || {};
-    const overrides = cameraMetaValues[sourceId] || {};
-    return {
-      name: overrides.name !== undefined ? overrides.name : (meta.camera_name || meta.label || ""),
-      location: overrides.location !== undefined ? overrides.location : (meta.location || ""),
-      lat:
-        overrides.lat !== undefined && overrides.lat !== null
-          ? overrides.lat
-          : meta.location_lat !== undefined && meta.location_lat !== null
-            ? meta.location_lat
-            : null,
-      lng:
-        overrides.lng !== undefined && overrides.lng !== null
-          ? overrides.lng
-          : meta.location_lng !== undefined && meta.location_lng !== null
-            ? meta.location_lng
-            : null,
-      detection_enabled: overrides.detection_enabled !== undefined
-        ? overrides.detection_enabled
-        : meta.detection_enabled !== undefined ? meta.detection_enabled : false,
-    };
-  };
-
-  const buildMapUrlFromInfo = (info) => {
-    if (!info) return null;
-    // Prioritize text location if available (so user edits reflect immediately)
-    if (info.location && info.location.trim()) {
-      return `https://www.google.com/maps?q=${encodeURIComponent(
-        info.location
-      )}&z=15&output=embed`;
-    }
-    if (
-      info.lat !== null &&
-      info.lat !== undefined &&
-      info.lng !== null &&
-      info.lng !== undefined
-    ) {
-      return `https://www.google.com/maps?q=${info.lat},${info.lng}&z=16&output=embed`;
-    }
-    return null;
-  };
-
-  const selectedSourceInfo = getCameraInfo(selectedVideoSource);
-  const liveFeedMapUrl = buildMapUrlFromInfo(selectedVideoSource ? selectedSourceInfo : null);
+  }, [videoSources, selectedVideoSource, multiSourceIds]);
 
   const updateCameraMetaValue = (sourceId, field, value) => {
     if (!sourceId) return;
@@ -243,767 +119,240 @@ function App() {
     }));
   };
 
-  // Autocomplete state
-  const [locationSuggestions, setLocationSuggestions] = useState([]);
-  const [showSuggestions, setShowSuggestions] = useState(false);
-  const suggestionTimeout = useRef(null);
-
-  const fetchSuggestions = async (text) => {
-    if (!text || text.length < 3) {
-      setLocationSuggestions([]);
-      return;
-    }
-    try {
-      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(text)}&addressdetails=1&limit=5`);
-      const data = await res.json();
-      setLocationSuggestions(data || []);
-      setShowSuggestions(true);
-    } catch (err) {
-      console.error("Autocomplete error:", err);
-    }
-  };
-
-  const handleLocationChange = (e) => {
-    const text = e.target.value;
-    updateCameraMetaValue(selectedVideoSource, "location", text);
-
-    // Debounce
-    if (suggestionTimeout.current) clearTimeout(suggestionTimeout.current);
-    suggestionTimeout.current = setTimeout(() => {
-      fetchSuggestions(text);
-    }, 500);
-  };
-
-  const selectSuggestion = (s) => {
-    const name = s.display_name; // Full address
-    // Prefer simpler name? 
-    // s.address.city || s.address.town || s.address.village ...
-    // Let's use display_name for clarity or trim it.
-
-    updateCameraMetaValue(selectedVideoSource, "location", name);
-    setShowSuggestions(false);
-
-    // Update coordinates and save
-    const lat = parseFloat(s.lat);
-    const lng = parseFloat(s.lon);
-    updateCameraMetaValue(selectedVideoSource, "lat", lat);
-    updateCameraMetaValue(selectedVideoSource, "lng", lng);
-
-    saveCameraConfig(selectedVideoSource, { lat, lng, location: name });
-  };
-
-  const handleLocationCommit = async (sourceId, text) => {
-    if (!sourceId) return;
-    // 1. Try to geocode
-    const coords = await geocodeLocation(text);
-    if (coords) {
-      updateCameraMetaValue(sourceId, "lat", coords.lat);
-      updateCameraMetaValue(sourceId, "lng", coords.lng);
-      // Wait for state update to propagate? 
-      // Since updateCameraMetaValue is async (setState), we might have a race condition if we call save immediately with old state.
-      // Better to call save with explicit values or rely on a specialized save function.
-      // Let's modify saveCameraConfig or just creating a specialized save here.
-
-      // Actually, let's update the meta values first, then call save. 
-      // To ensure we save the NEW coords, we pass them directly to an enhanced save function or just update the object in memory before saving.
-      // Since `saveCameraConfig` reads from state `cameraMetaValues`, rely on `setTimeout` or pass overrides.
-      // Let's pass overrides to `saveCameraConfig`.
-
-      saveCameraConfig(sourceId, { lat: coords.lat, lng: coords.lng });
-    } else {
-      saveCameraConfig(sourceId);
-    }
-  };
-
   const saveCameraConfig = async (sourceId, overrides = {}) => {
     if (!sourceId) return;
-
-    // Find the actual camera_id associated with this source
     const sourceObj = videoSources.find(s => s.id === sourceId);
-    // Fallback to sourceId if no camera_id found (though usually there should be one)
     const cameraId = (sourceObj && sourceObj.camera_id) ? sourceObj.camera_id : sourceId;
-
     const meta = cameraMetaValues[sourceId] || {};
-    // Merge overrides
+
     const payload = {
       name: meta.name,
       location: meta.location,
       lat: overrides.lat !== undefined ? overrides.lat : meta.lat,
       lng: overrides.lng !== undefined ? overrides.lng : meta.lng,
-      detection_enabled: overrides.detection_enabled !== undefined ? overrides.detection_enabled : (meta.detection_enabled ?? true),
+      detection_enabled: overrides.detection_enabled !== undefined ? overrides.detection_enabled : (meta.detection_enabled ?? false),
     };
 
     try {
-      const res = await fetch(`${BACKEND_URL}/cameras/${encodeURIComponent(cameraId)}`, {
+      await fetch(`${BACKEND_URL}/cameras/${encodeURIComponent(cameraId)}`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
-      if (res.ok) {
-        console.log(`Camera config saved for ${cameraId}`);
-        // Opt: Show a toast?
-      } else {
-        console.error("Failed to save camera config");
-      }
+      // Optionally re-fetch sources to sync
     } catch (err) {
       console.error("Error saving camera config:", err);
     }
   };
 
-  const buildMapEmbedUrl = (evt) => {
-    if (!evt) return null;
-    const { location_lat: lat, location_lng: lng } = evt;
-    if (
-      lat !== undefined &&
-      lat !== null &&
-      lng !== undefined &&
-      lng !== null
-    ) {
-      return `https://www.google.com/maps?q=${lat},${lng}&z=16&output=embed`;
-    }
-    if (evt.location && evt.location.trim()) {
-      return `https://www.google.com/maps?q=${encodeURIComponent(
-        evt.location
-      )}&z=15&output=embed`;
-    }
-    return null;
-  };
-
-  const detailMapUrl = buildMapEmbedUrl(activeEvent);
-
   return (
-    <div className="app-root">
-      {showIntro && (
-        <div className="intro-overlay">
-          <video
-            src="/intro.mp4"
-            autoPlay
-            muted
-            playsInline
-            className="intro-video"
-            onEnded={() => setShowIntro(false)}
-            onError={(e) => console.log("Intro video missing or error", e)}
-          />
-          <button className="skip-btn" onClick={() => setShowIntro(false)}>
-            Skip Intro
-          </button>
+    <div className="app-root" style={{ display: 'flex', height: '100vh', width: '100vw', background: 'var(--bg-deep)', overflow: 'hidden' }}>
+
+      {/* Intro Overlay */}
+      <AnimatePresence>
+        {showIntro && (
+          <motion.div
+            className="intro-overlay"
+            initial={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.8 }}
+            style={{ position: 'fixed', inset: 0, zIndex: 9999, background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          >
+            <video
+              src="/intro.mp4"
+              autoPlay
+              muted
+              playsInline
+              className="intro-video"
+              onEnded={() => setShowIntro(false)}
+              onError={() => setShowIntro(false)}
+              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+            />
+            <button
+              onClick={() => setShowIntro(false)}
+              style={{ position: 'absolute', bottom: '50px', right: '50px', background: 'rgba(255,255,255,0.2)', color: '#fff', padding: '10px 20px', borderRadius: '30px', border: '1px solid rgba(255,255,255,0.5)', cursor: 'pointer', backdropFilter: 'blur(10px)' }}
+            >
+              Skip Intro
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
+
+      <main style={{ flex: 1, padding: '24px', overflowY: 'auto' }}>
+        <div style={{ maxWidth: '1600px', margin: '0 auto', height: '100%', display: 'flex', flexDirection: 'column', gap: '24px' }}>
+
+          {/* Header/Stats Row (Only visible on Dashboard) */}
+          {activeTab === 'dashboard' && (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px' }}>
+              <StatsCard title="Total Accidents" value={events.length} icon={AlertTriangle} trend={events.length > 5 ? 12 : 0} />
+              <StatsCard title="Active Cameras" value={videoSources.filter(s => s.available).length} icon={Video} />
+              <StatsCard title="System Status" value={status} icon={Activity} />
+            </div>
+          )}
+
+          {/* Main Content Area */}
+          <div style={{ flex: 1, minHeight: 0 }}>
+            <AnimatePresence mode="wait">
+              {activeTab === 'dashboard' && (
+                <motion.div
+                  key="dashboard"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.3 }}
+                  style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gridTemplateRows: '1.5fr 1fr', gap: '20px', height: '100%' }}
+                >
+                  {/* Top Left: Live Feed */}
+                  <div style={{ gridColumn: '1 / 2', gridRow: '1 / 2' }}>
+                    <LiveFeed
+                      videoSources={videoSources}
+                      selectedVideoSource={selectedVideoSource}
+                      setSelectedVideoSource={setSelectedVideoSource}
+                      videoSourceValues={videoSourceValues}
+                      setVideoSourceValues={setVideoSourceValues}
+                      cameraMetaValues={cameraMetaValues}
+                      updateCameraMetaValue={updateCameraMetaValue}
+                      saveCameraConfig={saveCameraConfig}
+                    />
+                  </div>
+
+                  {/* Right Column: Recent Alerts (Spans Full Height) */}
+                  <div style={{ gridColumn: '2 / 3', gridRow: '1 / 3' }}>
+                    <RecentAlerts
+                      events={events}
+                      setEvents={setEvents}
+                      setActiveEvent={setActiveEvent}
+                      activeEvent={activeEvent}
+                    />
+                  </div>
+
+                  {/* Bottom Left: Camera Map */}
+                  <div style={{ gridColumn: '1 / 2', gridRow: '2 / 3' }}>
+                    <CameraMap
+                      selectedVideoSource={selectedVideoSource}
+                      videoSources={videoSources}
+                      cameraMetaValues={cameraMetaValues}
+                      updateCameraMetaValue={updateCameraMetaValue}
+                      saveCameraConfig={saveCameraConfig}
+                    />
+                  </div>
+                </motion.div>
+              )}
+
+              {activeTab === 'camerawall' && (
+                <motion.div
+                  key="camerawall"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  style={{ height: '100%' }}
+                >
+                  <MultiCameraWall
+                    videoSources={videoSources}
+                    multiSourceIds={multiSourceIds}
+                    setMultiSourceIds={setMultiSourceIds}
+                    cameraMetaValues={cameraMetaValues}
+                    updateCameraMetaValue={updateCameraMetaValue}
+                    saveCameraConfig={saveCameraConfig}
+                    onRefreshSources={fetchVideoSources}
+                  />
+                </motion.div>
+              )}
+
+              {/* Placeholders for other tabs */}
+              {['alerts', 'gallery', 'settings'].includes(activeTab) && (
+                <motion.div key="placeholder" initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-muted)' }}>
+                  <h2>Feature coming soon...</h2>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
         </div>
-      )}
-      {/* Sidebar */}
-      <aside className="sidebar">
-        <div className="logo">Accident<span>AI</span></div>
-        <nav className="nav">
-          <button
-            className={`nav-item ${activeTab === "dashboard" ? "active" : ""}`}
-            onClick={() => setActiveTab("dashboard")}
+      </main>
+
+      {/* Detail Overlay using AnimatePresence */}
+      <AnimatePresence>
+        {activeEvent && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            style={{
+              position: 'fixed', inset: 0, zIndex: 100,
+              background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(8px)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px'
+            }}
+            onClick={() => setActiveEvent(null)}
           >
-            Dashboard
-          </button>
-          <button
-            className={`nav-item ${activeTab === "camerawall" ? "active" : ""}`}
-            onClick={() => setActiveTab("camerawall")}
-          >
-            Camera Wall
-          </button>
-          <button className="nav-item">Alerts</button>
-          <button className="nav-item">Gallery</button>
-          <button className="nav-item">Settings</button>
-        </nav>
-      </aside>
-
-      {/* Main content */}
-      <main className="main">
-        <header className="header">
-          <div className="header-left">
-            <h1>Accident Detection</h1>
-            <p>Real-time camera monitoring &amp; alerts</p>
-          </div>
-          <div className="header-right">
-            <div className="camera-select">
-              <label htmlFor="cameraSelect">Camera:</label>
-              <select
-                id="cameraSelect"
-                value={selectedCamera || "all"}
-                onChange={(e) => setSelectedCamera(e.target.value)}
-              >
-                <option value="all">All</option>
-                {cameras.map((cam) => (
-                  <option key={cam} value={cam}>
-                    {cam}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="status-pill">
-              Status: <span>{status}</span>
-            </div>
-          </div>
-        </header>
-
-        <section className="grid">
-          {activeTab === "dashboard" && (
-            <>
-              {/* Live Feed card */}
-              <div className="card live-feed">
-                <h2>Live Feed</h2>
-                <div className="video-source-select">
-                  <label htmlFor="videoSourceSelect">Source:</label>
-                  {videoSources.length === 0 ? (
-                    <span className="video-source-hint">No sources configured</span>
-                  ) : (
-                    <>
-                      <select
-                        id="videoSourceSelect"
-                        value={selectedVideoSource}
-                        onChange={(e) => {
-                          setSelectedVideoSource(e.target.value);
-                        }}
-                        style={{ marginRight: '1rem' }}
-                      >
-                        {videoSources.map((src) => (
-                          <option key={src.id} value={src.id}>
-                            {src.label}
-                          </option>
-                        ))}
-                      </select>
-
-                      <label className="detection-toggle">
-                        <input
-                          type="checkbox"
-                          checked={getCameraInfo(selectedVideoSource).detection_enabled}
-                          onChange={(e) => {
-                            const newState = e.target.checked;
-                            updateCameraMetaValue(selectedVideoSource, "detection_enabled", newState);
-                            saveCameraConfig(selectedVideoSource, { detection_enabled: newState });
-                          }}
-                        />
-                        <span>Detection {getCameraInfo(selectedVideoSource).detection_enabled ? "ON" : "OFF"}</span>
-                      </label>
-                    </>
-                  )}
-                </div>
-
-                {currentVideoSource?.requires_value && (
-                  <div className="video-source-custom">
-                    <input
-                      type={
-                        currentVideoSource.value_type === "number"
-                          ? "number"
-                          : "text"
-                      }
-                      placeholder={
-                        currentVideoSource.value_hint ||
-                        "Enter path / URL / webcam index"
-                      }
-                      value={currentValue}
-                      onChange={(e) =>
-                        setVideoSourceValues((prev) => ({
-                          ...prev,
-                          [selectedVideoSource]: e.target.value,
-                        }))
-                      }
-                      className="video-source-input"
-                    />
-                    <small className="video-source-hint">
-                      {currentVideoSource.description ||
-                        "Provide connection details for this source"}
-                    </small>
-                  </div>
-                )}
-
-                {selectedVideoSource && (
-                  <div className="camera-meta-editor">
-                    {/* Inputs moved to Camera Location card */}
-                    <small className="video-source-hint">
-                      Configure name and location in the "Camera Location" card.
-                    </small>
-                  </div>
-                )}
-                <div className="live-feed-body">
-                  {hasValueReady ? (
-                    <img
-                      src={buildFeedUrl(selectedVideoSource)}
-                      alt="Live feed"
-                      className="live-feed-img"
-                      onError={(e) => {
-                        console.error("Error loading live feed");
-                        e.target.style.opacity = 0;
-                      }}
-                    />
-                  ) : (
-                    <div className="live-feed-placeholder">
-                      Enter connection details to preview this source.
-                    </div>
-                  )}
-                </div>
-                <p className="card-hint">
-                  If blank, ensure backend is running at <code>{BACKEND_URL}</code>{" "}
-                  and serving <code>/video_feed</code>.
-                </p>
-              </div>
-
-              {/* Camera map card */}
-              <div className="card camera-map">
-                <h2>Camera Location</h2>
-                <div className="video-source-select">
-                  <label htmlFor="videoSourceSelect">Source:</label>
-                  {videoSources.length === 0 ? (
-                    <span className="video-source-hint">No sources configured</span>
-                  ) : (
-                    <>
-                      <select
-                        id="videoSourceSelect"
-                        value={selectedVideoSource}
-                        onChange={(e) => {
-                          setSelectedVideoSource(e.target.value);
-                        }}
-                        style={{ marginRight: '1rem' }}
-                      >
-                        {videoSources.map((src) => (
-                          <option key={src.id} value={src.id}>
-                            {src.label}
-                          </option>
-                        ))}
-                      </select>
-
-                      <label className="detection-toggle">
-                        <input
-                          type="checkbox"
-                          checked={selectedSourceInfo.detection_enabled}
-                          onChange={(e) => {
-                            const newState = e.target.checked;
-                            updateCameraMetaValue(selectedVideoSource, "detection_enabled", newState);
-                            saveCameraConfig(selectedVideoSource, { detection_enabled: newState });
-                          }}
-                        />
-                        <span>Detection {selectedSourceInfo.detection_enabled ? "ON" : "OFF"}</span>
-                      </label>
-                    </>
-                  )}
-                </div>
-                <div className="camera-map-info">
-                  <div className="camera-meta-field">
-                    <input
-                      className="camera-map-name-input"
-                      type="text"
-                      placeholder="Camera Name"
-                      value={selectedSourceInfo.name}
-                      onChange={(e) =>
-                        updateCameraMetaValue(
-                          selectedVideoSource,
-                          "name",
-                          e.target.value
-                        )
-                      }
-                      onBlur={() => saveCameraConfig(selectedVideoSource)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') saveCameraConfig(selectedVideoSource);
-                      }}
-                    />
-                  </div>
-                  <div className="camera-meta-field" style={{ position: 'relative' }}>
-                    <input
-                      className="camera-map-location-input"
-                      type="text"
-                      placeholder="Location (City/Intersection)"
-                      value={selectedSourceInfo.location}
-                      onChange={handleLocationChange}
-                      onBlur={(e) => {
-                        // Delayed hide to allow click on suggestion
-                        setTimeout(() => setShowSuggestions(false), 200);
-                        handleLocationCommit(selectedVideoSource, e.target.value);
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          setShowSuggestions(false);
-                          handleLocationCommit(selectedVideoSource, e.target.value);
-                        }
-                      }}
-                    />
-                    {showSuggestions && locationSuggestions.length > 0 && (
-                      <ul className="suggestions-dropdown">
-                        {locationSuggestions.map((s) => (
-                          <li key={s.place_id} onClick={() => selectSuggestion(s)}>
-                            {s.display_name}
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </div>
-                </div>
-                {/* Leaflet Map Logic */}
-                <div style={{ height: "300px", width: "100%", marginTop: "10px", borderRadius: "8px", overflow: "hidden" }}>
-                  <MapContainer
-                    center={[
-                      selectedSourceInfo.lat || 20.5937,
-                      selectedSourceInfo.lng || 78.9629
-                    ]}
-                    zoom={selectedSourceInfo.lat ? 13 : 4}
-                    style={{ height: "100%", width: "100%" }}
-                  >
-                    <TileLayer
-                      attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                      url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                    />
-                    <LocationMarker
-                      lat={selectedSourceInfo.lat}
-                      lng={selectedSourceInfo.lng}
-                      onLocationSelect={(lat, lng) => {
-                        updateCameraMetaValue(selectedVideoSource, "lat", lat);
-                        updateCameraMetaValue(selectedVideoSource, "lng", lng);
-                        // Also trigger save immediately? Or wait for user to confirm?
-                        // Let's trigger save for seamless "drop pin to set"
-                        // Need to access cameraMetaValues state which might be stale in this callback if not careful,
-                        // but updateCameraMetaValue updates state.
-                        // We can call saveCameraConfig but we need to ensure state is updated first.
-                        // Actually, let's just update local state and let user press "Enter" in fields or maybe add a "Save" button? 
-                        // User requested "drop the pin to set exact location", implies immediate effect.
-                        // We'll wrap save in a timeout or useEffect or just call it:
-                        setTimeout(() => saveCameraConfig(selectedVideoSource), 100);
-                      }}
-                    />
-                  </MapContainer>
-                </div>
-              </div>
-            </>
-          )
-          }
-
-          {/* Multi-feed wall - Moved to separate tab */}
-          {
-            activeTab === "camerawall" && (
-              <div className="card multi-feed">
-                <h2>Multi Camera Wall</h2>
-                <div className="multi-feed-controls">
-                  {videoSources.length === 0 ? (
-                    <span className="video-source-hint">
-                      Configure sources in backend to enable multi view.
-                    </span>
-                  ) : (
-                    videoSources.map((src) => {
-                      const checked = multiSourceIds.includes(src.id);
-                      const disabled =
-                        !checked &&
-                        multiSourceIds.length >= MAX_MULTI_FEEDS;
-                      return (
-                        <div key={src.id} className="multi-feed-control-group" style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '5px' }}>
-                          <label
-                            className={`multi-feed-option ${checked ? "selected" : ""
-                              } ${disabled ? "disabled" : ""}`}
-                            style={{ margin: 0 }}
-                          >
-                            <input
-                              type="checkbox"
-                              checked={checked}
-                              disabled={disabled}
-                              onChange={(e) => {
-                                if (e.target.checked) {
-                                  if (multiSourceIds.length < MAX_MULTI_FEEDS) {
-                                    setMultiSourceIds((prev) => [...prev, src.id]);
-                                  }
-                                } else {
-                                  setMultiSourceIds((prev) =>
-                                    prev.filter((id) => id !== src.id)
-                                  );
-                                }
-                              }}
-                            />
-                            {src.label}
-                          </label>
-
-                          <label className="detection-toggle" style={{ fontSize: '0.8rem' }} title="Toggle AI Detection">
-                            <input
-                              type="checkbox"
-                              checked={getCameraInfo(src.id).detection_enabled}
-                              onChange={(e) => {
-                                const newState = e.target.checked;
-                                updateCameraMetaValue(src.id, "detection_enabled", newState);
-                                saveCameraConfig(src.id, { detection_enabled: newState });
-                              }}
-                            />
-                            <span>AI</span>
-                          </label>
-                        </div>
-                      );
-                    })
-                  )}
-                </div>
-                <div className="multi-feed-grid">
-                  {multiSourceIds.length === 0 && (
-                    <div className="multi-feed-placeholder">
-                      Select cameras above to monitor multiple feeds seamlessly.
-                    </div>
-                  )}
-                  {multiSourceIds.map((sourceId) => {
-                    const hasVal = sourceHasRequiredValue(sourceId);
-                    return (
-                      <div key={sourceId} className="multi-feed-item">
-                        <div className="multi-feed-overlay">
-                          {getSourceMeta(sourceId)?.label || sourceId}
-                        </div>
-                        {hasVal ? (
-                          <img
-                            src={buildFeedUrl(sourceId)}
-                            alt={sourceId}
-                            className="multi-feed-img"
-                            onError={(e) => {
-                              e.target.style.opacity = 0;
-                            }}
-                          />
-                        ) : (
-                          <div className="multi-feed-error">No Signal</div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )
-          }
-          {/* Garbage removed */}
-
-          {/* Recent Alerts & Snapshots - Dashboard specific */}
-          {
-            activeTab === "dashboard" && (
-              <>
-                {/* Recent Alerts */}
-                <div className="card">
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <h2>Recent Alerts</h2>
-                    <button
-                      className="clear-alerts-btn"
-                      onClick={async () => {
-                        if (confirm("Are you sure you want to clear all alerts?")) {
-                          try {
-                            await fetch(`${BACKEND_URL}/accidents`, { method: 'DELETE' });
-                            setEvents([]); // clear local state
-                          } catch (e) {
-                            console.error("Failed to clear alerts", e);
-                          }
-                        }
-                      }}
-                      style={{
-                        background: 'transparent',
-                        border: '1px solid #ff4444',
-                        color: '#ff4444',
-                        padding: '4px 8px',
-                        cursor: 'pointer',
-                        borderRadius: '4px',
-                        fontSize: '0.8rem'
-                      }}
-                    >
-                      Clear Alerts
-                    </button>
-                  </div>
-                  <div className="card-body scroll">
-                    {events.length === 0 && <p>No alerts yet</p>}
-                    {events.map((e) => (
-                      <div
-                        key={e.id}
-                        className="event-item"
-                        onClick={() => setActiveEvent(e)}
-                        role="button"
-                        tabIndex={0}
-                        onKeyDown={(evt) => {
-                          if (evt.key === "Enter" || evt.key === " ") {
-                            evt.preventDefault();
-                            setActiveEvent(e);
-                          }
-                        }}
-                      >
-                        {/* Snapshot thumbnail (if available) */}
-                        {e.snapshot_id && (
-                          <div className="event-thumb-wrap">
-                            <img
-                              src={`${BACKEND_URL}/snapshot/${e.snapshot_id}`}
-                              alt="Accident snapshot"
-                              className="event-thumb"
-                              onError={(ev) => {
-                                ev.target.style.display = "none";
-                              }}
-                            />
-                          </div>
-                        )}
-                        <div className="event-content">
-                          <div className="event-header">
-                            <span className="event-type">
-                              {e.type || "accident"}
-                            </span>
-                            <span className={`event-severity sev-${e.severity}`}>
-                              {e.severity}
-                            </span>
-                          </div>
-                          <div className="event-meta">
-                            <span>
-                              Time:{" "}
-                              {e.time
-                                ? new Date(e.time * 1000).toLocaleString()
-                                : "—"}
-                            </span>
-                            <span>
-                              Camera: {e.camera_id && e.camera_id.trim()
-                                ? e.camera_id
-                                : "—"}
-                            </span>
-                            <span>
-                              Location: {e.location && e.location.trim()
-                                ? e.location
-                                : "—"}
-                            </span>
-                            <span>Rel speed: {e.rel_speed?.toFixed(2) ?? "—"}</span>
-                            <span>IoU: {e.iou?.toFixed(2) ?? "—"}</span>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Snapshots */}
-                <div className="card">
-                  <h2>Snapshots</h2>
-                  <div className="card-body scroll snaps">
-                    {snapshots.length === 0 && <p>No snapshots</p>}
-                    {snapshots.map((id) => (
-                      <a
-                        key={id}
-                        href={`${BACKEND_URL}/snapshot/${id}`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="snapshot-link"
-                      >
-                        Snapshot {id}
-                      </a>
-                    ))}
-                  </div>
-                </div>
-              </>
-            )
-          }
-
-
-        </section >
-      </main >
-      {
-        activeEvent && (
-          <div className="detail-overlay">
-            <div className="detail-card">
-              <div className="detail-card-header">
+            <motion.div
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              onClick={(e) => e.stopPropagation()}
+              className="glass-panel"
+              style={{
+                width: '100%', maxWidth: '1000px', maxHeight: '90vh',
+                background: '#0f172a', borderRadius: '24px', padding: '32px',
+                overflowY: 'auto', border: '1px solid var(--border-color)'
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '24px' }}>
                 <div>
-                  <p className="detail-breadcrumb">Dashboard / Alert Detail</p>
-                  <h2>Accident Information</h2>
-                  <p className="detail-id">ID: {activeEvent.id}</p>
+                  <h2 style={{ margin: 0, fontSize: '1.8rem' }}>Accident Details</h2>
+                  <p style={{ margin: '4px 0 0', color: 'var(--text-secondary)' }}>Event ID: {activeEvent.id}</p>
                 </div>
                 <button
-                  className="detail-close"
                   onClick={() => setActiveEvent(null)}
-                >
-                  ← Back to dashboard
-                </button>
+                  style={{ background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: '50%', width: '40px', height: '40px', cursor: 'pointer', color: '#fff' }}
+                >✕</button>
               </div>
 
-              <div className="detail-info-grid">
+              <div style={{ display: 'grid', gridTemplateColumns: 'minmax(400px, 1fr) 1fr', gap: '24px' }}>
                 <div>
-                  <label>Camera</label>
-                  <p>{activeEvent.camera_id || "—"}</p>
+                  <img
+                    src={activeEvent.snapshot_url ? `${BACKEND_URL}${activeEvent.snapshot_url}` : ''}
+                    alt="Main Snapshot"
+                    style={{ width: '100%', borderRadius: '16px', border: '1px solid var(--border-color)' }}
+                  />
+                  <div style={{ marginTop: '16px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                    {/* Placeholder for snapshot carousel if we had multiple */}
+                  </div>
                 </div>
-                <div>
-                  <label>Severity</label>
-                  <p className={`event-severity sev-${activeEvent.severity}`}>
-                    {activeEvent.severity}
-                  </p>
-                </div>
-                <div>
-                  <label>Time</label>
-                  <p>
-                    {activeEvent.time
-                      ? new Date(activeEvent.time * 1000).toLocaleString()
-                      : "—"}
-                  </p>
-                </div>
-                <div>
-                  <label>Location</label>
-                  <p>{activeEvent.location || "—"}</p>
-                </div>
-                <div>
-                  <label>IoU</label>
-                  <p>{activeEvent.iou?.toFixed(2) ?? "—"}</p>
-                </div>
-                <div>
-                  <label>Relative speed</label>
-                  <p>{activeEvent.rel_speed?.toFixed(2) ?? "—"}</p>
-                </div>
-              </div>
-
-              <div className="detail-content">
-                <div className="detail-media">
-                  <h3>Snapshots ({activeEvent.snapshot_count || (activeEvent.snapshot_id ? 1 : 0)})</h3>
-                  {activeEvent.snapshot_id ? (
-                    <div className="detail-snapshots-grid">
-                      {/* Render all available crops */}
-                      {Array.from({ length: activeEvent.snapshot_count || 1 }).map((_, idx) => (
-                        <div key={idx} className="snapshot-wrapper">
-                          <img
-                            src={`${BACKEND_URL}/snapshot/${activeEvent.snapshot_id}?crop_idx=${idx}`}
-                            alt={`Accident snapshot ${idx + 1}`}
-                            className="detail-snapshot"
-                            title={`Snapshot ${idx + 1}`}
-                          />
-                          <span className="snapshot-label">#{idx + 1}</span>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="detail-snapshot placeholder">
-                      No snapshot available
-                    </div>
-                  )}
-                </div>
-                <div className="detail-map">
-                  <h3>Accident location</h3>
-                  {detailMapUrl ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  <div style={{ background: 'rgba(255,255,255,0.03)', padding: '16px', borderRadius: '12px' }}>
+                    <label style={{ fontSize: '0.8rem', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Location</label>
+                    <p style={{ margin: '4px 0 0', fontSize: '1.1rem' }}>{activeEvent.location || 'Unknown'}</p>
+                  </div>
+                  <div style={{ background: 'rgba(255,255,255,0.03)', padding: '16px', borderRadius: '12px' }}>
+                    <label style={{ fontSize: '0.8rem', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Severity</label>
+                    <p style={{ margin: '4px 0 0', fontSize: '1.1rem', color: activeEvent.severity === 'high' ? 'var(--danger)' : 'var(--warning)' }}>
+                      {activeEvent.severity || 'Moderate'}
+                    </p>
+                  </div>
+                  <div style={{ flex: 1, minHeight: '200px', borderRadius: '12px', overflow: 'hidden' }}>
                     <iframe
-                      src={detailMapUrl}
-                      title="Accident location map"
-                      allowFullScreen
-                      loading="lazy"
-                    />
-                  ) : (
-                    <div className="detail-map-placeholder">
-                      Location data not available for this alert.
-                    </div>
-                  )}
+                      width="100%"
+                      height="100%"
+                      frameBorder="0"
+                      style={{ border: 0 }}
+                      src={`https://www.google.com/maps?q=${activeEvent.location_lat || 0},${activeEvent.location_lng || 0}&z=15&output=embed`}
+                    ></iframe>
+                  </div>
                 </div>
               </div>
-            </div>
-          </div>
-        )
-      }
-    </div >
-  );
-}
 
-// Helper component for map clicks
-function LocationMarker({ lat, lng, onLocationSelect }) {
-  const map = useMapEvents({
-    click(e) {
-      onLocationSelect(e.latlng.lat, e.latlng.lng);
-      map.flyTo(e.latlng, map.getZoom());
-    },
-  });
-
-  // Pan map if external props change
-  useEffect(() => {
-    if (lat !== null && lng !== null && lat !== undefined && lng !== undefined) {
-      map.flyTo([lat, lng], map.getZoom());
-    }
-  }, [lat, lng, map]);
-
-  return lat === null || lng === null || lat === undefined || lng === undefined ? null : (
-    <Marker position={[lat, lng]} />
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   );
 }
 
 export default App;
+
+function Activity(props) {
+  return <AlertTriangle {...props} />; // Quick polyfill if Activity icon from lucide is missing or similar
+}
