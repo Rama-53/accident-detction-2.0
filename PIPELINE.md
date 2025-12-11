@@ -31,7 +31,11 @@ graph TD
         Threshold -->|No| Discard["🗑️ Discard (False Positive)"]
         Threshold -->|Yes| BuildDoc["📝 Build Alert Document"]
         
-        BuildDoc -->|Full Frame| DB_Write["💾 Insert into MongoDB"]
+        BuildDoc -->|Full Frame| LPR["🔍 License Plate Recognition<br>(Scan Full Frame)"]
+        LPR -->|Plate Found?| ContactCheck{"📒 Emergency Contact?"}
+        ContactCheck -->|Yes| AlertSMS["📲 Send Emergency Alert"]
+        ContactCheck -.->|Continue| DB_Write["💾 Insert into MongoDB"]
+        LPR -.->|No Plate| DB_Write
     end
 
     %% 5. Visualization Stage
