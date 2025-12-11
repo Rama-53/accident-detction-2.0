@@ -202,37 +202,10 @@ def main(zmq_host: str, zmq_port: int, mongo_uri: str, db_name: str, out_dir: st
                 except Exception as e:
                     print(f"[subscriber] failed to save full frame: {e}")
 
-            # 2. Handle Crops
-            for i, b64 in enumerate(crops_b64):
-                try:
-                    pil_img = decode_b64_to_pil(b64)
-                except Exception as e:
-                    print(f"[subscriber] failed to decode crop #{i}: {e}")
-                    continue
-
-                # Build unique filename
-                timestamp = datetime.utcnow().strftime("%Y%m%dT%H%M%S%f")[:-3]
-                fname = f"{camera_id}_f{frame_idx}_c{i}_{timestamp}.jpg"
-                fpath = out_dir / fname
-
-                try:
-                    save_pil_to_path(pil_img, fpath)
-                except Exception as e:
-                    print(f"[subscriber] failed to save crop to disk: {e}")
-                    continue
-
-                # classify using placeholder (replace with real model later)
-                try:
-                    pred = classifier.predict(pil_img)
-                except Exception as e:
-                    pred = {"error": f"classification_failed: {str(e)}"}
-
-                crops_meta.append({
-                    "file": str(fpath),
-                    "width": pil_img.width,
-                    "height": pil_img.height,
-                    "prediction": pred
-                })
+            # 2. Handle Crops - SKIPPED per user request (Full frame only)
+            # We do not log/save cropped photos from CNN classifier anymore.
+            # The 'crops_meta' will only contain the Full Frame (from step 1).
+            pass
 
             # Filter crops: keep ONLY "vehicle_collision"
             accident_crops = []

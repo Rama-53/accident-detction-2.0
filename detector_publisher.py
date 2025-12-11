@@ -140,15 +140,17 @@ def main(
             while True:
                 try:
                     doc = db.cameras.find_one({"camera_id": camera_id})
-                    if doc:
+                    if doc and "detection_enabled" in doc:
+                        new_val = doc["detection_enabled"]
                         with config_lock:
-                            # Update detection state if present
-                            if "detection_enabled" in doc:
-                                current_config["detection_enabled"] = doc["detection_enabled"]
+                            old_val = current_config["detection_enabled"]
+                            if old_val != new_val:
+                                current_config["detection_enabled"] = new_val
+                                print(f"[publisher] Config updated: detection_enabled={new_val}")
                 except Exception as e:
                     print(f"[publisher] Config poll error: {e}")
                 
-                time.sleep(3)
+                time.sleep(1.0)
         except Exception as e:
             print(f"[publisher] Failed to connect to DB for polling: {e}")
 

@@ -536,6 +536,7 @@ def video_sources():
                 "location": loc,
                 "location_lat": lat,
                 "location_lng": lng,
+                "detection_enabled": CAMERA_METADATA.get(cam_id, {}).get("detection_enabled", True) if cam_id else True
             }
         )
     return options

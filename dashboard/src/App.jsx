@@ -29,6 +29,7 @@ function App() {
   const [cameraMetaValues, setCameraMetaValues] = useState({});
   const [activeEvent, setActiveEvent] = useState(null);
   const [activeTab, setActiveTab] = useState("dashboard");
+  const [showIntro, setShowIntro] = useState(true);
 
   // Fetch backend status
   useEffect(() => {
@@ -125,6 +126,7 @@ function App() {
               next[src.id] = {
                 name: src.camera_name || "",
                 location: src.location || "",
+                detection_enabled: src.detection_enabled,
               };
             }
           });
@@ -373,6 +375,22 @@ function App() {
 
   return (
     <div className="app-root">
+      {showIntro && (
+        <div className="intro-overlay">
+          <video
+            src="/intro.mp4"
+            autoPlay
+            muted
+            playsInline
+            className="intro-video"
+            onEnded={() => setShowIntro(false)}
+            onError={(e) => console.log("Intro video missing or error", e)}
+          />
+          <button className="skip-btn" onClick={() => setShowIntro(false)}>
+            Skip Intro
+          </button>
+        </div>
+      )}
       {/* Sidebar */}
       <aside className="sidebar">
         <div className="logo">Accident<span>AI</span></div>
