@@ -31,7 +31,7 @@ import numpy as np
 
 import cv2
 class CameraState:
-    def __init__(self, history_len=5, cooldown_len=10):
+    def __init__(self, history_len=10, cooldown_len=10):
         self.history = deque(maxlen=history_len)
         self.cooldown = 0
         self.cooldown_len = cooldown_len
@@ -42,10 +42,10 @@ class CameraState:
             self.cooldown -= 1
 
     def should_alert(self):
-        # Alert if >= 3 accidents in last 5 frames
+        # Alert if >= 7 accidents in last 10 frames
         # We removed the internal blocking cooldown to allow external logic (subscriber) 
         # to decide whether to group or create new alerts.
-        return sum(self.history) >= 3
+        return sum(self.history) >= 7
 
 # Import the placeholder classifier you agreed to use
 # Make sure classifier/cnn_classifier.py contains PlaceholderClassifier
