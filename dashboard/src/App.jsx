@@ -11,6 +11,9 @@ import RecentAlerts from "./components/RecentAlerts";
 import StatsCard from "./components/StatsCard";
 import CameraMap from "./components/CameraMap";
 import MultiCameraWall from "./components/MultiCameraWall";
+import Gallery from "./components/Gallery";
+import AlertsPage from "./components/AlertsPage";
+import Settings from "./components/Settings";
 
 function App() {
   const [status, setStatus] = useState("Unavailable");
@@ -262,10 +265,25 @@ function App() {
               )}
 
               {/* Placeholders for other tabs */}
-              {['alerts', 'gallery', 'settings'].includes(activeTab) && (
-                <motion.div key="placeholder" initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-muted)' }}>
-                  <h2>Feature coming soon...</h2>
-                </motion.div>
+              {activeTab === 'alerts' && (
+                <AlertsPage
+                  events={events}
+                  setActiveEvent={setActiveEvent}
+                />
+              )}
+
+              {activeTab === 'gallery' && (
+                <Gallery
+                  events={events}
+                  setActiveEvent={setActiveEvent}
+                />
+              )}
+
+              {activeTab === 'settings' && (
+                <Settings
+                  videoSources={videoSources}
+                  saveCameraConfig={saveCameraConfig}
+                />
               )}
             </AnimatePresence>
           </div>

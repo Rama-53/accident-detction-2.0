@@ -15,6 +15,7 @@ const MultiCameraWall = ({
     const MAX_FEEDS = 4;
     const [showInitModal, setShowInitModal] = React.useState(false);
     const [newCamForm, setNewCamForm] = React.useState({ label: '', type: 'webcam', source: '' });
+    const [layoutMode, setLayoutMode] = React.useState('free'); // 'free', 'grid', 'focus'
 
     const handleCreateCamera = async () => {
         if (!newCamForm.label || !newCamForm.source) return;
@@ -66,34 +67,50 @@ const MultiCameraWall = ({
         <div style={{ height: '100%', display: 'flex', flexDirection: 'column', gap: '20px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <h2 style={{ fontSize: '1.5rem', fontWeight: 600 }}>Multi-Camera Wall</h2>
-                <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
-                    {multiSourceIds.length} / {MAX_FEEDS} Active Feeds
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <div className="glass-panel" style={{ display: 'flex', gap: '4px', padding: '4px', borderRadius: '8px' }}>
+                        <button onClick={() => setLayoutMode('free')} title="Free" style={{ background: layoutMode === 'free' ? 'rgba(255,255,255,0.2)' : 'transparent', border: 'none', borderRadius: '6px', cursor: 'pointer', padding: '6px', color: '#fff' }}><Grid size={18} /></button>
+                        <button onClick={() => setLayoutMode('grid')} title="Grid" style={{ background: layoutMode === 'grid' ? 'rgba(255,255,255,0.2)' : 'transparent', border: 'none', borderRadius: '6px', cursor: 'pointer', padding: '6px', color: '#fff' }}>2x2</button>
+                        <button onClick={() => setLayoutMode('focus')} title="Focus" style={{ background: layoutMode === 'focus' ? 'rgba(255,255,255,0.2)' : 'transparent', border: 'none', borderRadius: '6px', cursor: 'pointer', padding: '6px', color: '#fff' }}>1+3</button>
+                    </div>
                 </div>
             </div>
 
-            {/* Grid of Active Feeds */}
-            <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))',
-                gap: '20px',
-                flex: 1
-            }}>
-                {multiSourceIds.map(id => {
+            {/* Container Logic based on Layout Mode */}
+            <div style={
+                layoutMode === 'free' ? { display: 'flex', flexWrap: 'wrap', gap: '20px', flex: 1, alignContent: 'flex-start' } :
+                    layoutMode === 'grid' ? { display: 'grid', gridTemplateColumns: '1fr 1fr', gridTemplateRows: '1fr 1fr', gap: '20px', flex: 1 } :
+                        { display: 'grid', gridTemplateColumns: '3fr 1fr', gridTemplateRows: 'repeat(3, 1fr)', gap: '20px', flex: 1 }
+            }>
+                {multiSourceIds.map((id, idx) => {
                     const source = videoSources.find(s => s.id === id);
+
+                    let focusStyle = {};
+                    if (layoutMode === 'focus') {
+                        focusStyle = idx === 0 ? { gridRow: '1 / -1', gridColumn: '1 / 2' } : { gridColumn: '2 / 3' };
+                    }
+
                     return (
                         <motion.div
                             key={id}
                             layout
-                            initial={{ opacity: 0, scale: 0.9 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            exit={{ opacity: 0, scale: 0.9 }}
                             className="glass-panel"
                             style={{
                                 borderRadius: '16px',
                                 overflow: 'hidden',
                                 display: 'flex',
                                 flexDirection: 'column',
-                                position: 'relative'
+                                position: 'relative',
+                                ...(layoutMode === 'free' ? {
+                                    resize: 'both',
+                                    minWidth: '300px',
+                                    minHeight: '225px',
+                                    width: '400px',
+                                    height: '300px',
+                                    flexGrow: 1,
+                                    maxWidth: '100%'
+                                } : { width: '100%', height: '100%' }),
+                                ...focusStyle
                             }}
                         >
                             <div style={{
@@ -151,7 +168,20 @@ const MultiCameraWall = ({
                             alignItems: 'center',
                             justifyContent: 'center',
                             borderStyle: 'dashed',
-                            minHeight: '300px'
+                            position: 'relative',
+                            // Match conditional styling of camera cards
+                            ...(layoutMode === 'free' ? {
+                                minWidth: '300px',
+                                minHeight: '225px',
+                                width: '400px',
+                                height: '300px',
+                                flexGrow: 1,
+                                maxWidth: '100%'
+                            } : {
+                                width: '100%',
+                                height: '100%',
+                                minHeight: '300px'
+                            })
                         }}
                     >
                         <div style={{ textAlign: 'center' }}>

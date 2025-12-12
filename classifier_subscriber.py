@@ -333,7 +333,8 @@ def main(zmq_host: str, zmq_port: int, mongo_uri: str, db_name: str, out_dir: st
             state.last_write_ts = now
             
             # --- DB Grouping Logic ---
-            # Check for recent active alert (within 20 seconds)
+            # Rolling Window: Check time since 'last_updated' (or 'inserted_at' if new).
+            # This keeps grouping as long as the accident continues.
             
             latest_alert = accidents_col.find_one(
                 {"camera_id": camera_id},
@@ -341,11 +342,25 @@ def main(zmq_host: str, zmq_port: int, mongo_uri: str, db_name: str, out_dir: st
             )
             
             should_group = False
+            delta = 999.0
+            
             if latest_alert:
-                delta = (datetime.utcnow() - latest_alert["inserted_at"]).total_seconds()
+                # Use last_updated if available, else inserted_at
+                ref_time = latest_alert.get("last_updated", latest_alert["inserted_at"])
+                # Ensure ref_time is datetime (pymongo returns datetime)
+                if not isinstance(ref_time, datetime):
+                     # fallback or parse if string (unlikely with pymongo)
+                     pass
+
+                delta = (datetime.utcnow() - ref_time).total_seconds()
+                
+                # Use 10s rolling window
                 if delta < 10.0:
                     should_group = True
             
+            if verbose:
+                print(f"[subscriber] Grouping Check: Camera={camera_id}, LastAlert={latest_alert['_id'] if latest_alert else 'None'}, Delta={delta:.1f}s, Group={should_group}")
+
             if should_group:
                 # Update existing alert
                 try:
@@ -353,12 +368,7 @@ def main(zmq_host: str, zmq_port: int, mongo_uri: str, db_name: str, out_dir: st
                         {"_id": latest_alert["_id"]},
                         {
                             "$push": {"crops": {"$each": crops_meta}},
-                            "$set": {"last_updated": datetime.utcnow()} # Update timestamp to keep window alive?
-                            # Request said "detected -> next 20 sec". 
-                            # Usually this means a fixed window from START. 
-                            # If we update 'inserted_at', it becomes a rolling window (keeps extending).
-                            # User said "when accident detected, then next 20s". Implies fixed window from first detection.
-                            # So we do NOT update 'inserted_at'.
+                            "$set": {"last_updated": datetime.utcnow()} # Extend the window
                         }
                     )
                     if verbose:
@@ -368,10 +378,26 @@ def main(zmq_host: str, zmq_port: int, mongo_uri: str, db_name: str, out_dir: st
             else:
                 # Create NEW alert
                 doc = build_mongo_doc(camera_id, frame_idx, ts_utc, event, crops_meta)
+                # Initialize last_updated same as inserted_at
+                doc["last_updated"] = doc["inserted_at"]
+                
                 try:
                     res = accidents_col.insert_one(doc)
                     if verbose:
                         print(f"[subscriber] INSERTED NEW alert {res.inserted_id} cam={camera_id} crops={len(crops_meta)}")
+                    
+                    # System Notification
+                    try:
+                        from plyer import notification
+                        notification.notify(
+                            title=f"Accident Detected!",
+                            message=f"Camera: {camera_id}\nCheck dashboard immediately.",
+                            app_name="Accident Detection System",
+                            timeout=10
+                        )
+                    except Exception as ne:
+                        print(f"[subscriber] Notification failed: {ne}")
+
                 except Exception as e:
                     print(f"[subscriber] MongoDB insert failed: {e}")
                     traceback.print_exc()
