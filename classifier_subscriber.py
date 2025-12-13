@@ -35,11 +35,18 @@ class CameraState:
         self.history = deque(maxlen=history_len)
         self.cooldown = 0
         self.cooldown_len = cooldown_len
+        self.vlm_buffer = [] # Store (timestamp, image_path, pil_img) tuples
+        self.vlm_done = False # Only run once per accident event
 
     def update(self, is_accident):
         self.history.append(is_accident)
         if self.cooldown > 0:
             self.cooldown -= 1
+        
+        # If no accident for a while, reset VLM state for next time
+        if sum(self.history) == 0:
+            self.vlm_done = False
+            self.vlm_buffer = []
 
     def should_alert(self):
         # Alert if >= 7 accidents in last 10 frames
@@ -47,32 +54,17 @@ class CameraState:
         # to decide whether to group or create new alerts.
         return sum(self.history) >= 7
 
-# Import the placeholder classifier you agreed to use
-# Make sure classifier/cnn_classifier.py contains PlaceholderClassifier
+# Switch to VLM (Google Gemini)
 try:
+    from classifier.vlm_classifier import VLMClassifier
+    # You can hardcode key here for testing or rely on env var
+    classifier = VLMClassifier(model_name="gemini-1.5-flash") 
+    print("[subscriber] VLM (Gemini) initialized for classification")
+except ImportError:
+    print("[subscriber] VLM module not found, falling back to dummy/CNN")
+    # Fallback/Dummy logic if needed
     from classifier.cnn_classifier import AccidentClassifier
-except Exception:
-    # Provide a very small fallback if the import fails (defensive)
-    class AccidentClassifier:
-        def __init__(self):
-            print("[classifier] fallback placeholder active")
-
-        def predict(self, pil_img: Image.Image):
-            w, h = pil_img.size
-            area = w * h
-            if area > 200 * 200:
-                severity = "high"
-            elif area > 100 * 100:
-                severity = "medium"
-            else:
-                severity = "low"
-            return {
-                "label": "vehicle_collision",
-                "severity": severity,
-                "confidence": 0.5,
-                "note": "fallback placeholder"
-            }
-
+    classifier = AccidentClassifier()
 
 def decode_b64_to_pil(b64str: str) -> Image.Image:
     """Decode a base64 JPEG/PNG string to a PIL Image (RGB)."""
@@ -142,10 +134,6 @@ def main(zmq_host: str, zmq_port: int, mongo_uri: str, db_name: str, out_dir: st
         print(f"[subscriber] WARNING: LPR init failed: {e}")
         lp_model = None
 
-    classifier = AccidentClassifier()
-    if verbose:
-        print("[subscriber] classifier initialized (real)")
-
     # Track state per camera
     camera_states = {}
 
@@ -187,17 +175,55 @@ def main(zmq_host: str, zmq_port: int, mongo_uri: str, db_name: str, out_dir: st
                     fpath = out_dir / fname
                     save_pil_to_path(ff_img, fpath)
                     
-                    # Add as a "virtual" crop with high severity so it's kept
+                    save_pil_to_path(ff_img, fpath)
+                    
+                    # --- VLM Multi-Frame Logic ---
+                    # Only collect if we haven't done VLM for this event yet
+                    if not state.vlm_done:
+                        current_time = time.time()
+                        
+                        # Add frame if buffer empty OR enough time passed (>0.8s)
+                        if not state.vlm_buffer or (current_time - state.vlm_buffer[-1][0] > 0.8):
+                            state.vlm_buffer.append((current_time, fpath, ff_img))
+                            if verbose:
+                                print(f"[subscriber] VLM Buffer: {len(state.vlm_buffer)}/3 frames captured")
+
+                        # If we have 3 frames, Trigger Prediction
+                        if len(state.vlm_buffer) >= 3:
+                            if verbose:
+                                print("[subscriber] Triggering Gemini VLM Analysis on 3 frames...")
+                            
+                            images_to_send = [item[2] for item in state.vlm_buffer] # Extract PIL images
+                            
+                            if classifier:
+                                pred = classifier.predict(images_to_send)
+                            else:
+                                 pred = {
+                                    "label": "vehicle_collision",
+                                    "severity": "high",
+                                    "confidence": 1.0, 
+                                    "description": "Fallback (No VLM)"
+                                }
+                            
+                            state.vlm_done = True # Mark done so we don't spam API
+                            state.vlm_buffer = [] # Clear buffer
+                            
+                            # We attach this VLM result to the CURRENT frame metadata
+                            # Ideally, we should update the MAIN alert document with this detailed note.
+                            # But for now, putting it in crops metadata ensures it gets into DB.
+                        else:
+                            # Not ready yet, standard placeholder
+                            pred = { "label": "processing", "severity": "pending", "description": "Analyzing sequence..." }
+                    else:
+                        # Already done
+                         pred = { "label": "vehicle_collision", "severity": "high", "description": "VLM Analysis Complete" }
+
+                    # Add to metadata
                     crops_meta.append({
                         "file": str(fpath),
                         "width": ff_img.width,
                         "height": ff_img.height,
-                        "prediction": {
-                            "label": "vehicle_collision",
-                            "severity": "high", # Force high severity
-                            "confidence": 1.0,
-                            "note": "full_frame_snapshot"
-                        }
+                        "prediction": pred
                     })
                 except Exception as e:
                     print(f"[subscriber] failed to save full frame: {e}")
