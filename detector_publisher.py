@@ -188,16 +188,21 @@ def main(
     def open_capture(src_val):
         try:
             s = int(src_val)
+            # On Windows, using CAP_DSHOW is often faster/more reliable for webcams
+            if sys.platform == "win32":
+                c = cv2.VideoCapture(s, cv2.CAP_DSHOW)
+            else:
+                c = cv2.VideoCapture(s)
         except:
             s = src_val
-        c = cv2.VideoCapture(s)
+            c = cv2.VideoCapture(s)
+        
         if not c.isOpened():
              print(f"[publisher] Warning: Cannot open source {s}")
         return c
 
     cap = open_capture(current_source_val)
     if not cap.isOpened():
-        # Don't crash, just retry in loop or wait for config update
         print("[publisher] Initial source failed. Waiting for valid source...")
 
     detector = AccidentDetector(
@@ -227,15 +232,26 @@ def main(
                 print(f"[publisher] Switching video source to: {new_source_val}")
                 if cap:
                     cap.release()
+                print(f"[publisher] Released old source. Waiting 1.0s to ensure device is free...")
+                time.sleep(1.0) # Safety delay for Windows camera release
                 cap = open_capture(new_source_val)
                 current_source_val = new_source_val
-                frame_idx = 0 # Optional: Reset counters?
+                frame_idx = 0 
             
             if cap is None or not cap.isOpened():
-                time.sleep(1.0)
-                # Try to reopen or just wait
-                if cap is None:
-                     cap = open_capture(current_source_val)
+                # Visualize error on the stream so user knows it failed
+                import numpy as np
+                err_img = np.zeros((480, 640, 3), np.uint8)
+                cv2.putText(err_img, f"FAILED TO OPEN: {current_source_val}", (50, 240), 
+                           cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
+                with latest_frame_lock:
+                    ok, buf = cv2.imencode(".jpg", err_img)
+                    if ok: latest_frame_jpeg = buf.tobytes()
+                
+                print(f"[publisher] Failed to open {current_source_val}, retrying in 2s...")
+                time.sleep(2.0)
+                # Retry
+                cap = open_capture(current_source_val)
                 continue
 
             ret, frame = cap.read()

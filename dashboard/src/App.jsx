@@ -554,22 +554,39 @@ function App() {
                         // Actually saveCameraConfig merges 'cameraMetaValues[sourceId]' + overrides.
                         // But here we want to update a *different* camera ID (targetCamId) with a value from *selectedVideoSource*.
 
-                        // Let's create a direct fetch here to be safe and explicit.
-                        fetch(`${BACKEND_URL}/cameras/${targetCamId}`, {
-                          method: 'POST',
-                          headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({ video_source: actualSource })
-                        })
-                          .then(res => res.json())
-                          .then(console.log)
-                          .then(() => {
-                            alert(`Detector source switched to: ${actualSource}. Switching view to Detector Stream...`);
-                            setSelectedVideoSource("detector_stream");
+                        // 2. Resource Conflict Prevention (Windows)
+                        // We must STOP the live feed (API preview) BEFORE the detector tries to open the same camera.
+                        // Otherwise, both processes compete for the webcam, causing a freeze.
+
+                        // Step A: Kill the current preview immediately
+                        setSelectedVideoSource(""); // This unmounts the <img src> for the local preview
+
+                        // Step B: Wait for the API to release the camera handle (cap.release() in finally block)
+                        // 2.5 seconds should be safe.
+                        const DELAY_MS = 2500;
+                        alert(`Releasing camera... Please wait ${DELAY_MS / 1000}s before detector takes over.`);
+
+                        setTimeout(() => {
+                          // Step C: Now it's safe to tell the detector to grab the camera
+                          const payload = { video_source: String(actualSource) };
+                          // alert(`Sending payload: ${JSON.stringify(payload)}`); // Debug
+
+                          fetch(`${BACKEND_URL}/cameras/${targetCamId}`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(payload)
                           })
-                          .catch(err => {
-                            console.error(err);
-                            alert("Failed to switch source");
-                          });
+                            .then(res => res.json())
+                            .then(() => {
+                              // Step D: Switch UI to detector stream
+                              alert(`Detector matched! Switching view...`);
+                              setSelectedVideoSource("detector_stream");
+                            })
+                            .catch(err => {
+                              console.error(err);
+                              alert("Failed to switch source");
+                            });
+                        }, DELAY_MS);
                       }}
                     >
                       Set as Active Detector Input

@@ -102,6 +102,19 @@ VIDEO_SOURCES: Dict[str, Dict[str, Any]] = {
         "camera_id": "webcam_1",
         "camera_name": "Auxiliary Webcam",
         "location": "Spare Lab Cam",
+        "requires_value": False,
+        "camera_id": "webcam_1",
+        "camera_name": "Auxiliary Webcam",
+        "location": "Spare Lab Cam",
+    },
+    "detector_stream": {
+        "label": "Detector Stream (Processed)",
+        "type": "stream",
+        "description": "Output from the object detection engine",
+        "source": "http://localhost:5001/stream.mjpg",
+        "requires_value": False,
+        "camera_id": "demo_cam_main",
+        "camera_name": "Detector Output"
     },
     "ip_cam_example": {
         "label": "IP camera (RTSP example)",
@@ -469,6 +482,10 @@ def _video_frame_generator(source: str) -> Generator[bytes, None, None]:
                 b"--frame\r\n"
                 b"Content-Type: image/jpeg\r\n\r\n" + frame_bytes + b"\r\n"
             )
+    except GeneratorExit:
+        print(f"[api] Client disconnected from stream {source}")
+    except Exception as e:
+        print(f"[api] Stream error: {e}")
     finally:
         cap.release()
 
