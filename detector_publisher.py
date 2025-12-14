@@ -125,12 +125,13 @@ def main(
     # Global state for dynamic config
     config_lock = threading.Lock()
     current_config = {
-        "detection_enabled": False
+        "detection_enabled": False,
+        "video_source": video_source 
     }
 
     def poll_config_updates():
         """
-        Periodically check MongoDB for camera config overrides (specifically detection_enabled).
+        Periodically check MongoDB for camera config overrides.
         """
         try:
             mongo_client = MongoClient("mongodb://127.0.0.1:27017")
@@ -140,13 +141,24 @@ def main(
             while True:
                 try:
                     doc = db.cameras.find_one({"camera_id": camera_id})
-                    if doc and "detection_enabled" in doc:
-                        new_val = doc["detection_enabled"]
-                        with config_lock:
-                            old_val = current_config["detection_enabled"]
-                            if old_val != new_val:
-                                current_config["detection_enabled"] = new_val
-                                print(f"[publisher] Config updated: detection_enabled={new_val}")
+                    if doc:
+                         with config_lock:
+                            # 1. Check detection_enabled
+                            if "detection_enabled" in doc:
+                                new_val = doc["detection_enabled"]
+                                old_val = current_config["detection_enabled"]
+                                if old_val != new_val:
+                                    current_config["detection_enabled"] = new_val
+                                    print(f"[publisher] Config updated: detection_enabled={new_val}")
+                            
+                            # 2. Check video_source
+                            if "video_source" in doc:
+                                new_src = doc["video_source"]
+                                old_src = current_config["video_source"]
+                                if str(new_src) != str(old_src):
+                                    current_config["video_source"] = new_src
+                                    print(f"[publisher] Config updated: video_source={new_src}")
+
                 except Exception as e:
                     print(f"[publisher] Config poll error: {e}")
                 
@@ -169,15 +181,24 @@ def main(
     sock.bind(bind_addr)
     print(f"[publisher] Bound PUB socket to {bind_addr}")
 
-    # Open video source
-    try:
-        src = int(video_source)
-    except Exception:
-        src = video_source
+    # Initial Open video source
+    current_source_val = video_source
+    cap = None
 
-    cap = cv2.VideoCapture(src)
+    def open_capture(src_val):
+        try:
+            s = int(src_val)
+        except:
+            s = src_val
+        c = cv2.VideoCapture(s)
+        if not c.isOpened():
+             print(f"[publisher] Warning: Cannot open source {s}")
+        return c
+
+    cap = open_capture(current_source_val)
     if not cap.isOpened():
-        raise RuntimeError(f"Cannot open video source: {video_source}")
+        # Don't crash, just retry in loop or wait for config update
+        print("[publisher] Initial source failed. Waiting for valid source...")
 
     detector = AccidentDetector(
         model_path=model_path,
@@ -196,13 +217,36 @@ def main(
     frame_idx = 0
     try:
         while True:
+            # Check for source switch
+            new_source_val = None
+            with config_lock:
+                 if str(current_config["video_source"]) != str(current_source_val):
+                      new_source_val = current_config["video_source"]
+            
+            if new_source_val is not None:
+                print(f"[publisher] Switching video source to: {new_source_val}")
+                if cap:
+                    cap.release()
+                cap = open_capture(new_source_val)
+                current_source_val = new_source_val
+                frame_idx = 0 # Optional: Reset counters?
+            
+            if cap is None or not cap.isOpened():
+                time.sleep(1.0)
+                # Try to reopen or just wait
+                if cap is None:
+                     cap = open_capture(current_source_val)
+                continue
+
             ret, frame = cap.read()
             if not ret:
-                print("[publisher] Video ended, looping...")
+                print("[publisher] Video ended or stream failed, looping/retrying...")
                 cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
                 ret, frame = cap.read()
                 if not ret:
-                    break
+                    time.sleep(0.5)
+                    continue
+
             frame_idx += 1
             loop_start_tx = time.time()
 

@@ -150,7 +150,8 @@ class CameraConfig(BaseModel):
     location: Optional[str] = None
     lat: Optional[float] = None
     lng: Optional[float] = None
-    detection_enabled: Optional[bool] = False
+    detection_enabled: Optional[bool] = None
+    video_source: Optional[str] = None
 
 CAMERA_METADATA: Dict[str, Dict[str, Any]] = {}
 # 1. Initialize from hardcoded config
@@ -163,6 +164,7 @@ for cfg in VIDEO_SOURCES.values():
         "location": cfg.get("location"),
         "lat": cfg.get("location_lat"),
         "lng": cfg.get("location_lng"),
+        "video_source": cfg.get("source"), # Default from config
     }
 
 # 2. Apply overrides from MongoDB
@@ -173,7 +175,7 @@ try:
             if c_id not in CAMERA_METADATA:
                 CAMERA_METADATA[c_id] = {}
             # Update fields if present in DB
-            for f in ["name", "location", "lat", "lng", "detection_enabled"]:
+            for f in ["name", "location", "lat", "lng", "detection_enabled", "video_source"]:
                 if stored_cam.get(f) is not None:
                     CAMERA_METADATA[c_id][f] = stored_cam.get(f)
     print(f"[api] Loaded {db.cameras.count_documents({})} camera overrides from DB")
@@ -206,6 +208,9 @@ def update_camera_config(camera_id: str, config: CameraConfig):
     if config.detection_enabled is not None:
         CAMERA_METADATA[camera_id]["detection_enabled"] = config.detection_enabled
         update_data["detection_enabled"] = config.detection_enabled
+    if config.video_source is not None:
+        CAMERA_METADATA[camera_id]["video_source"] = config.video_source
+        update_data["video_source"] = config.video_source
 
     # 2. Persist to MongoDB
     if update_data:
@@ -424,18 +429,35 @@ def _video_frame_generator(source: str) -> Generator[bytes, None, None]:
     in multipart/x-mixed-replace format for <img src> streaming.
     Only used for local files or webcams (not HTTP streams).
     """
+    MAX_RETRIES = 5
+    retry_count = 0
     cap = cv2.VideoCapture(source)
+    
     if not cap.isOpened():
-        # No video available; yield nothing (client will show blank)
+        # Yield a single placeholder frame instead of failing silently or crashing
+        import numpy as np
+        blank = np.zeros((480, 640, 3), np.uint8)
+        cv2.putText(blank, "CAMERA BUSY / UNAVAILABLE", (50, 240), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+        ok, buf = cv2.imencode(".jpg", blank)
+        if ok:
+             yield (b"--frame\r\n"
+                    b"Content-Type: image/jpeg\r\n\r\n" + buf.tobytes() + b"\r\n")
         return
 
     try:
         while True:
             ret, frame = cap.read()
             if not ret:
-                # restart from beginning for file sources
-                cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
-                continue
+                # If we lose the camera (or file ends), handle it
+                if isinstance(source, int) or (isinstance(source, str) and source.isdigit()):
+                     # Webcam lost? Release and break to stop spam.
+                     print(f"[api] Lost connection to source {source}")
+                     break
+                else: 
+                     # File restart
+                     cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
+                     continue
+            
             ok, buffer = cv2.imencode(".jpg", frame)
             if not ok:
                 continue
@@ -543,7 +565,9 @@ def video_sources():
                 "location": loc,
                 "location_lat": lat,
                 "location_lng": lng,
-                "detection_enabled": CAMERA_METADATA.get(cam_id, {}).get("detection_enabled", False) if cam_id else False
+                "detection_enabled": CAMERA_METADATA.get(cam_id, {}).get("detection_enabled", False) if cam_id else False,
+                "video_source": cfg.get("source"), # Default from config
+                "source": cfg.get("source") # Explicitly expose source for frontend logic
             }
         )
     return options

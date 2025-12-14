@@ -515,6 +515,66 @@ function App() {
 
                 {selectedVideoSource && (
                   <div className="camera-meta-editor">
+                    <button
+                      className="set-source-btn"
+                      style={{
+                        background: 'rgba(74, 222, 128, 0.2)',
+                        border: '1px solid rgba(74, 222, 128, 0.5)',
+                        color: '#e5eef5',
+                        padding: '6px 12px',
+                        borderRadius: '8px',
+                        cursor: 'pointer',
+                        fontSize: '13px',
+                        marginBottom: '8px'
+                      }}
+                      onClick={() => {
+                        // We assume 'demo_cam_main' is the primary detector ID.
+                        // We want to set its 'video_source' to the *actual* source of the currently selected preview.
+                        // 1. Get current actual source
+                        let actualSource = null;
+                        const meta = getSourceMeta(selectedVideoSource);
+                        if (meta.requires_value) {
+                          actualSource = getSourceValue(selectedVideoSource);
+                        } else {
+                          actualSource = meta.source;
+                        }
+
+                        if (actualSource === null || actualSource === undefined || actualSource === "") {
+                          alert(`Please enter a value for this source first. (Value was: ${actualSource})`);
+                          return;
+                        }
+
+                        // 2. Update demo_cam_main config
+                        // We use 'demo_cam_main' because that's what detector_publisher polls by default.
+                        const targetCamId = "demo_cam_main";
+
+                        // We need to fetch current config to preserve other fields? 
+                        // Or just send the update. Our API endpoint in App.jsx (saveCameraConfig)
+                        // merges overrides with existing meta if we just pass overrides to it?
+                        // Actually saveCameraConfig merges 'cameraMetaValues[sourceId]' + overrides.
+                        // But here we want to update a *different* camera ID (targetCamId) with a value from *selectedVideoSource*.
+
+                        // Let's create a direct fetch here to be safe and explicit.
+                        fetch(`${BACKEND_URL}/cameras/${targetCamId}`, {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ video_source: actualSource })
+                        })
+                          .then(res => res.json())
+                          .then(console.log)
+                          .then(() => {
+                            alert(`Detector source switched to: ${actualSource}. Switching view to Detector Stream...`);
+                            setSelectedVideoSource("detector_stream");
+                          })
+                          .catch(err => {
+                            console.error(err);
+                            alert("Failed to switch source");
+                          });
+                      }}
+                    >
+                      Set as Active Detector Input
+                    </button>
+
                     {/* Inputs moved to Camera Location card */}
                     <small className="video-source-hint">
                       Configure name and location in the "Camera Location" card.
