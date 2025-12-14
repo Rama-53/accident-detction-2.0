@@ -166,6 +166,13 @@ class CameraConfig(BaseModel):
     detection_enabled: Optional[bool] = None
     video_source: Optional[str] = None
 
+class SystemConfig(BaseModel):
+    multi_detection_enabled: Optional[bool] = None
+
+SYSTEM_CONFIG: Dict[str, Any] = {
+    "multi_detection_enabled": False
+}
+
 CAMERA_METADATA: Dict[str, Dict[str, Any]] = {}
 # 1. Initialize from hardcoded config
 for cfg in VIDEO_SOURCES.values():
@@ -194,6 +201,33 @@ try:
     print(f"[api] Loaded {db.cameras.count_documents({})} camera overrides from DB")
 except Exception as e:
     print(f"[api] Failed to load camera overrides: {e}")
+
+# 3. Load System Config
+try:
+    sys_conf_doc = db.system_config.find_one({"config_id": "main"})
+    if sys_conf_doc:
+        if "multi_detection_enabled" in sys_conf_doc:
+            SYSTEM_CONFIG["multi_detection_enabled"] = sys_conf_doc["multi_detection_enabled"]
+    print(f"[api] Loaded system config: {SYSTEM_CONFIG}")
+except Exception as e:
+    print(f"[api] Failed to load system config: {e}")
+
+@app.get("/system/config")
+def get_system_config():
+    return SYSTEM_CONFIG
+
+@app.post("/system/config")
+def update_system_config(config: SystemConfig):
+    if config.multi_detection_enabled is not None:
+        SYSTEM_CONFIG["multi_detection_enabled"] = config.multi_detection_enabled
+    
+    # Persist
+    db.system_config.update_one(
+        {"config_id": "main"},
+        {"$set": SYSTEM_CONFIG},
+        upsert=True
+    )
+    return {"status": "updated", "config": SYSTEM_CONFIG}
 
 
 @app.post("/cameras/{camera_id}")
@@ -348,13 +382,27 @@ def _doc_to_event(doc: Dict[str, Any]) -> Dict[str, Any]:
 
 
 @app.get("/events")
-def get_events(camera_id: Optional[str] = None, limit: int = 50) -> List[Dict[str, Any]]:
+def get_events(
+    camera_id: Optional[str] = None, 
+    start_time: Optional[float] = None,
+    end_time: Optional[float] = None,
+    limit: int = 50
+) -> List[Dict[str, Any]]:
     """
     Lightweight accident list for the dashboard "Recent Alerts" card.
+    Supports filtering by camera and time range.
     """
     query: Dict[str, Any] = {}
     if camera_id:
         query["camera_id"] = camera_id
+    
+    if start_time or end_time:
+        query["inserted_at"] = {}
+        if start_time:
+            query["inserted_at"]["$gte"] = start_time
+        if end_time:
+            query["inserted_at"]["$lte"] = end_time
+
     docs = list(db.accidents.find(query).sort("inserted_at", -1).limit(limit))
     return [_doc_to_event(d) for d in docs]
 

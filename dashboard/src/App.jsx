@@ -31,6 +31,23 @@ function App() {
   const [activeTab, setActiveTab] = useState("dashboard");
   const [showIntro, setShowIntro] = useState(true);
 
+  // Settings & Filters
+  const [multiDetectionEnabled, setMultiDetectionEnabled] = useState(false);
+  const [filterStartTime, setFilterStartTime] = useState("");
+  const [filterEndTime, setFilterEndTime] = useState("");
+
+  // Fetch System Config
+  useEffect(() => {
+    fetch(`${BACKEND_URL}/system/config`)
+      .then(res => res.json())
+      .then(data => {
+        if (data && data.multi_detection_enabled !== undefined) {
+          setMultiDetectionEnabled(data.multi_detection_enabled);
+        }
+      })
+      .catch(err => console.error("Failed to load system config", err));
+  }, []);
+
   // Fetch backend status
   useEffect(() => {
     async function fetchStatus() {
@@ -53,11 +70,20 @@ function App() {
   useEffect(() => {
     async function fetchEvents() {
       try {
-        const query =
-          selectedCamera && selectedCamera !== "all"
-            ? `?camera_id=${encodeURIComponent(selectedCamera)}`
-            : "";
-        const res = await fetch(`${BACKEND_URL}/events${query}`);
+        const params = new URLSearchParams();
+        if (selectedCamera && selectedCamera !== "all") {
+          params.append("camera_id", selectedCamera);
+        }
+        if (filterStartTime) {
+          const startTs = new Date(filterStartTime).getTime() / 1000;
+          if (!isNaN(startTs)) params.append("start_time", startTs);
+        }
+        if (filterEndTime) {
+          const endTs = new Date(filterEndTime).getTime() / 1000;
+          if (!isNaN(endTs)) params.append("end_time", endTs);
+        }
+
+        const res = await fetch(`${BACKEND_URL}/events?${params.toString()}`);
         const data = await res.json();
         setEvents(data);
       } catch (err) {
@@ -407,9 +433,24 @@ function App() {
           >
             Camera Wall
           </button>
-          <button className="nav-item">Alerts</button>
-          <button className="nav-item">Gallery</button>
-          <button className="nav-item">Settings</button>
+          <button
+            className={`nav-item ${activeTab === "alerts" ? "active" : ""}`}
+            onClick={() => setActiveTab("alerts")}
+          >
+            Alerts
+          </button>
+          <button
+            className={`nav-item ${activeTab === "gallery" ? "active" : ""}`}
+            onClick={() => setActiveTab("gallery")}
+          >
+            Gallery
+          </button>
+          <button
+            className={`nav-item ${activeTab === "settings" ? "active" : ""}`}
+            onClick={() => setActiveTab("settings")}
+          >
+            Settings
+          </button>
         </nav>
       </aside>
 
@@ -839,7 +880,107 @@ function App() {
               </div>
             )
           }
-          {/* Garbage removed */}
+          {activeTab === "settings" && (
+            <div className="card settings-card">
+              <h2>System Settings</h2>
+              <div className="setting-group" style={{ marginBottom: '2rem' }}>
+                <h3>Simultaneous Detection</h3>
+                <label className="toggle-switch" style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '10px' }}>
+                  <input
+                    type="checkbox"
+                    checked={multiDetectionEnabled}
+                    onChange={(e) => {
+                      const val = e.target.checked;
+                      setMultiDetectionEnabled(val);
+                      fetch(`${BACKEND_URL}/system/config`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ multi_detection_enabled: val })
+                      }).catch(err => console.error(err));
+                    }}
+                  />
+                  <span className="label-text">Enable Multi-Stream Detection (Beta)</span>
+                </label>
+                <p className="setting-hint" style={{ color: '#888', fontSize: '0.9rem', marginTop: '5px' }}>
+                  Allows the backend to process multiple video feeds concurrently if supported.
+                </p>
+              </div>
+
+              <div className="setting-group">
+                <h3>Camera Management</h3>
+                <div className="camera-list" style={{ display: 'grid', gap: '10px', marginTop: '10px' }}>
+                  {videoSources.map(src => (
+                    <div key={src.id} className="camera-list-item" style={{ background: 'rgba(255,255,255,0.05)', padding: '10px', borderRadius: '8px', display: 'flex', justifyContent: 'space-between' }}>
+                      <div>
+                        <span className="camera-name" style={{ fontWeight: 'bold' }}>{src.label}</span>
+                        <div style={{ fontSize: '0.8rem', color: '#aaa' }}>{src.description}</div>
+                      </div>
+                      <div className="camera-actions">
+                        <span className="badge" style={{ background: '#333', padding: '2px 6px', borderRadius: '4px', fontSize: '0.8rem' }}>{src.type}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === "alerts" && (
+            <div className="card alerts-full" style={{ height: 'calc(100vh - 140px)', display: 'flex', flexDirection: 'column' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                <h2>Alert History</h2>
+                <div className="filters-bar" style={{ display: 'flex', gap: '10px' }}>
+                  <select value={selectedCamera} onChange={e => setSelectedCamera(e.target.value)} style={{ padding: '6px', borderRadius: '4px', background: '#333', color: '#fff', border: '1px solid #444' }}>
+                    <option value="all">All Cameras</option>
+                    {cameras.map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                  <input type="datetime-local" value={filterStartTime} onChange={e => setFilterStartTime(e.target.value)} style={{ padding: '5px', borderRadius: '4px', background: '#333', color: '#fff', border: '1px solid #444' }} />
+                  <input type="datetime-local" value={filterEndTime} onChange={e => setFilterEndTime(e.target.value)} style={{ padding: '5px', borderRadius: '4px', background: '#333', color: '#fff', border: '1px solid #444' }} />
+                  <button onClick={() => { setFilterStartTime(""); setFilterEndTime(""); setSelectedCamera("all"); }} style={{ padding: '6px 12px', borderRadius: '4px', background: '#555', color: '#fff', border: 'none', cursor: 'pointer' }}>Reset</button>
+                </div>
+              </div>
+              <div className="alerts-list scroll" style={{ flex: 1, overflowY: 'auto' }}>
+                {events.length === 0 && <p style={{ padding: '20px', textAlign: 'center', color: '#666' }}>No alerts found for current criteria.</p>}
+                {events.map(e => (
+                  <div key={e.id} className="event-row" onClick={() => setActiveEvent(e)} style={{ display: 'grid', gridTemplateColumns: '40px 180px 1fr 100px', gap: '10px', padding: '12px', borderBottom: '1px solid rgba(255,255,255,0.1)', cursor: 'pointer', alignItems: 'center' }}>
+                    <span className={`severity-dot sev-${e.severity}`} style={{ width: '12px', height: '12px', borderRadius: '50%', display: 'inline-block' }}></span>
+                    <span className="time">{new Date(e.time * 1000).toLocaleString()}</span>
+                    <span className="camera" style={{ color: '#aaa' }}>{e.camera_id}</span>
+                    <span className="type" style={{ textTransform: 'capitalize' }}>{e.type}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {activeTab === "gallery" && (
+            <div className="card gallery-full" style={{ height: 'calc(100vh - 140px)', display: 'flex', flexDirection: 'column' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                <h2>Snapshot Gallery</h2>
+                <div className="filters-bar" style={{ display: 'flex', gap: '10px' }}>
+                  <select value={selectedCamera} onChange={e => setSelectedCamera(e.target.value)} style={{ padding: '6px', borderRadius: '4px', background: '#333', color: '#fff', border: '1px solid #444' }}>
+                    <option value="all">All Cameras</option>
+                    {cameras.map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                  <input type="datetime-local" value={filterStartTime} onChange={e => setFilterStartTime(e.target.value)} style={{ padding: '5px', borderRadius: '4px', background: '#333', color: '#fff', border: '1px solid #444' }} />
+                  <input type="datetime-local" value={filterEndTime} onChange={e => setFilterEndTime(e.target.value)} style={{ padding: '5px', borderRadius: '4px', background: '#333', color: '#fff', border: '1px solid #444' }} />
+                  <button onClick={() => { setFilterStartTime(""); setFilterEndTime(""); setSelectedCamera("all"); }} style={{ padding: '6px 12px', borderRadius: '4px', background: '#555', color: '#fff', border: 'none', cursor: 'pointer' }}>Reset</button>
+                </div>
+              </div>
+              <div className="gallery-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '15px', overflowY: 'auto', paddingRight: '10px' }}>
+                {events.filter(e => e.snapshot_id).length === 0 && <p style={{ padding: '20px', textAlign: 'center', color: '#666' }}>No snapshots found for current criteria.</p>}
+                {events.filter(e => e.snapshot_id).map(e => (
+                  <div key={e.id} className="gallery-item" onClick={() => window.open(`${BACKEND_URL}/snapshot/${e.snapshot_id}`, '_blank')} style={{ cursor: 'pointer', borderRadius: '8px', overflow: 'hidden', position: 'relative', aspectRatio: '16/9', background: '#000' }}>
+                    <img src={`${BACKEND_URL}/snapshot/${e.snapshot_id}`} loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={(ev) => ev.target.style.display = "none"} />
+                    <div className="gallery-meta" style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '6px', background: 'rgba(0,0,0,0.8)', fontSize: '0.75rem' }}>
+                      <div style={{ fontWeight: 'bold', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.camera_id}</div>
+                      <div style={{ color: '#aaa' }}>{new Date(e.time * 1000).toLocaleString()}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Recent Alerts & Snapshots - Dashboard specific */}
           {
