@@ -43,6 +43,7 @@ function App() {
   const [cameraMetaValues, setCameraMetaValues] = useState({});
   const [activeEvent, setActiveEvent] = useState(null);
   const [activeTab, setActiveTab] = useState("dashboard");
+  const [layoutMode, setLayoutMode] = useState("auto"); // auto, 2x2, focus, 1x1
   const [showIntro, setShowIntro] = useState(true);
 
   // Settings & Filters
@@ -388,7 +389,7 @@ function App() {
 
         {/* Dashboard View */}
         {activeTab === "dashboard" && (
-          <div className="dashboard-grid">
+          <div className="dashboard-grid animate-enter">
             <div className="col-main">
               {/* Live Feed Panel */}
               <div className="glass-panel">
@@ -584,27 +585,40 @@ function App() {
         {/* Camera Wall */}
         {activeTab === "camerawall" && (
           <div className="glass-panel">
-            <div className="panel-header">
+            <div className="panel-header" style={{ marginBottom: 16 }}>
               <div className="panel-title"><Video size={18} /> Multi-Camera Wall</div>
+              <div className="layout-switcher" style={{ display: 'flex', gap: 8 }}>
+                <button className={`btn-icon ${layoutMode === 'auto' ? 'active' : ''}`} onClick={() => setLayoutMode('auto')} title="Auto Grid"><LayoutDashboard size={16} /></button>
+                <button className={`btn-icon ${layoutMode === '2x2' ? 'active' : ''}`} onClick={() => setLayoutMode('2x2')} title="2x2 Grid"><div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, width: 14, height: 14 }}><div style={{ background: 'currentColor' }}></div><div style={{ background: 'currentColor' }}></div><div style={{ background: 'currentColor' }}></div><div style={{ background: 'currentColor' }}></div></div></button>
+                <button className={`btn-icon ${layoutMode === 'focus' ? 'active' : ''}`} onClick={() => setLayoutMode('focus')} title="Focus"><Monitor size={16} /></button>
+                <button className={`btn-icon ${layoutMode === '1x1' ? 'active' : ''}`} onClick={() => setLayoutMode('1x1')} title="Single View"><div style={{ width: 14, height: 14, background: 'currentColor', borderRadius: 2 }}></div></button>
+              </div>
             </div>
-            <div className="multi-feed-controls" style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 20 }}>
+
+            <div className="multi-feed-controls" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10, marginBottom: 20 }}>
               {videoSources.map(src => {
                 const checked = multiSourceIds.includes(src.id);
                 return (
-                  <div key={src.id} className={`multi-feed-option ${checked ? 'selected' : ''}`} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', background: checked ? 'rgba(59,130,246,0.2)' : 'rgba(255,255,255,0.05)', borderRadius: 99, border: checked ? '1px solid #3b82f6' : '1px solid transparent' }}>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+                  <div key={src.id} className={`multi-feed-option ${checked ? 'selected' : ''}`} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6, padding: '8px 12px', background: checked ? 'rgba(59,130,246,0.15)' : 'rgba(255,255,255,0.03)', borderRadius: 12, border: checked ? '1px solid rgba(59,130,246,0.5)' : '1px solid var(--glass-border)', transition: 'all 0.2s ease' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', flex: 1 }}>
+                      <div style={{ width: 16, height: 16, borderRadius: 4, border: '1px solid rgba(255,255,255,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', background: checked ? '#3b82f6' : 'transparent' }}>
+                        {checked && <div style={{ width: 8, height: 8, background: '#fff', borderRadius: 2 }}></div>}
+                      </div>
                       <input type="checkbox" checked={checked} style={{ display: 'none' }} onChange={e => {
                         if (e.target.checked) {
                           if (multiSourceIds.length < MAX_MULTI_FEEDS) setMultiSourceIds(p => [...p, src.id]);
                         } else setMultiSourceIds(p => p.filter(id => id !== src.id));
                       }} />
-                      {src.label}
+                      <span style={{ fontSize: 13, fontWeight: 500, color: checked ? '#fff' : 'var(--text-muted)' }}>{src.label}</span>
                     </label>
-                    {/* Independent AI Toggle for this source */}
-                    <label style={{ marginLeft: 8, display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, paddingLeft: 8, borderLeft: '1px solid rgba(255,255,255,0.2)', cursor: 'pointer' }}>
-                      <span style={{ color: src.detection_enabled ? '#34d399' : '#94a3b8' }}>AI</span>
+
+                    <label style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, cursor: 'pointer' }}>
+                      <div className={`toggle-track ${src.detection_enabled ? 'on' : ''}`} style={{ width: 24, height: 14, background: src.detection_enabled ? 'rgba(16, 185, 129, 0.3)' : 'rgba(255,255,255,0.1)', borderRadius: 99, position: 'relative', transition: '0.2s' }}>
+                        <div style={{ position: 'absolute', top: 2, left: src.detection_enabled ? 12 : 2, width: 10, height: 10, background: src.detection_enabled ? '#10b981' : '#64748b', borderRadius: '50%', transition: '0.2s' }}></div>
+                      </div>
                       <input
                         type="checkbox"
+                        style={{ display: 'none' }}
                         checked={src.detection_enabled || false}
                         onChange={(e) => {
                           const val = e.target.checked;
@@ -612,19 +626,24 @@ function App() {
                           setVideoSources(prev => prev.map(s => s.id === src.id ? { ...s, detection_enabled: val } : s));
                         }}
                       />
+                      <span style={{ fontSize: 9, color: src.detection_enabled ? '#34d399' : '#64748b' }}>AI</span>
                     </label>
                   </div>
                 );
               })}
             </div>
-            <div className="multi-feed-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 16 }}>
+
+            <div className={`wall-grid-${layoutMode}`} style={{ minHeight: 400, transition: 'all 0.3s ease' }}>
               {multiSourceIds.map(sid => (
-                <div key={sid} style={{ background: '#000', aspectRatio: '16/9', borderRadius: 12, overflow: 'hidden', position: 'relative', border: '1px solid var(--glass-border)' }}>
-                  <div style={{ position: 'absolute', top: 10, left: 10, background: 'rgba(0,0,0,0.7)', padding: '4px 8px', borderRadius: 4, fontSize: 11, zIndex: 10 }}>{getSourceMeta(sid)?.label}</div>
-                  <img src={buildFeedUrl(sid)} style={{ width: '100%', height: '100%', objectFit: 'contain' }} onError={e => e.target.style.opacity = 0} />
+                <div key={sid} className="animate-enter resizable-card" style={{ background: '#000', width: '100%', height: '100%', borderRadius: 16, overflow: 'hidden', position: 'relative', border: '1px solid var(--glass-border)', boxShadow: '0 4px 20px rgba(0,0,0,0.3)' }}>
+                  <div style={{ position: 'absolute', top: 12, left: 12, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', padding: '6px 10px', borderRadius: 8, fontSize: 12, fontWeight: 500, zIndex: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <div style={{ width: 6, height: 6, borderRadius: '50%', background: getSourceMeta(sid)?.detection_enabled ? '#10b981' : '#cbd5e1', boxShadow: getSourceMeta(sid)?.detection_enabled ? '0 0 8px #10b981' : 'none' }}></div>
+                    {getSourceMeta(sid)?.label}
+                  </div>
+                  <img src={buildFeedUrl(sid)} style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={e => e.target.style.opacity = 0} />
                 </div>
               ))}
-              {multiSourceIds.length === 0 && <div style={{ gridColumn: '1/-1', padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>Select cameras above to view feeds.</div>}
+              {multiSourceIds.length === 0 && <div style={{ width: '100%', height: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', border: '2px dashed var(--glass-border)', borderRadius: 16 }}>Select cameras above to view feeds</div>}
             </div>
           </div>
         )}
