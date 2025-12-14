@@ -927,16 +927,16 @@ function App() {
 
           {activeTab === "alerts" && (
             <div className="card alerts-full" style={{ height: 'calc(100vh - 140px)', display: 'flex', flexDirection: 'column' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                <h2>Alert History</h2>
-                <div className="filters-bar" style={{ display: 'flex', gap: '10px' }}>
-                  <select value={selectedCamera} onChange={e => setSelectedCamera(e.target.value)} style={{ padding: '6px', borderRadius: '4px', background: '#333', color: '#fff', border: '1px solid #444' }}>
+              <div style={{ marginBottom: '1.5rem' }}>
+                <h2 style={{ marginBottom: '1rem' }}>Alert History</h2>
+                <div className="filters-bar" style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                  <select value={selectedCamera} onChange={e => setSelectedCamera(e.target.value)} style={{ padding: '8px 12px', borderRadius: '8px', background: 'rgba(255,255,255,0.05)', color: '#fff', border: '1px solid rgba(255,255,255,0.1)' }}>
                     <option value="all">All Cameras</option>
                     {cameras.map(c => <option key={c} value={c}>{c}</option>)}
                   </select>
-                  <input type="datetime-local" value={filterStartTime} onChange={e => setFilterStartTime(e.target.value)} style={{ padding: '5px', borderRadius: '4px', background: '#333', color: '#fff', border: '1px solid #444' }} />
-                  <input type="datetime-local" value={filterEndTime} onChange={e => setFilterEndTime(e.target.value)} style={{ padding: '5px', borderRadius: '4px', background: '#333', color: '#fff', border: '1px solid #444' }} />
-                  <button onClick={() => { setFilterStartTime(""); setFilterEndTime(""); setSelectedCamera("all"); }} style={{ padding: '6px 12px', borderRadius: '4px', background: '#555', color: '#fff', border: 'none', cursor: 'pointer' }}>Reset</button>
+                  <input type="datetime-local" value={filterStartTime} onChange={e => setFilterStartTime(e.target.value)} style={{ padding: '8px 12px', borderRadius: '8px', background: 'rgba(255,255,255,0.05)', color: '#fff', border: '1px solid rgba(255,255,255,0.1)' }} />
+                  <input type="datetime-local" value={filterEndTime} onChange={e => setFilterEndTime(e.target.value)} style={{ padding: '8px 12px', borderRadius: '8px', background: 'rgba(255,255,255,0.05)', color: '#fff', border: '1px solid rgba(255,255,255,0.1)' }} />
+                  <button onClick={() => { setFilterStartTime(""); setFilterEndTime(""); setSelectedCamera("all"); }} style={{ padding: '8px 16px', borderRadius: '8px', background: 'rgba(255,255,255,0.1)', color: '#fff', border: '1px solid rgba(255,255,255,0.1)', cursor: 'pointer' }}>Reset</button>
                 </div>
               </div>
               <div className="alerts-list scroll" style={{ flex: 1, overflowY: 'auto' }}>
@@ -955,16 +955,16 @@ function App() {
 
           {activeTab === "gallery" && (
             <div className="card gallery-full" style={{ height: 'calc(100vh - 140px)', display: 'flex', flexDirection: 'column' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                <h2>Snapshot Gallery</h2>
-                <div className="filters-bar" style={{ display: 'flex', gap: '10px' }}>
-                  <select value={selectedCamera} onChange={e => setSelectedCamera(e.target.value)} style={{ padding: '6px', borderRadius: '4px', background: '#333', color: '#fff', border: '1px solid #444' }}>
+              <div style={{ marginBottom: '1.5rem' }}>
+                <h2 style={{ marginBottom: '1rem' }}>Snapshot Gallery</h2>
+                <div className="filters-bar" style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                  <select value={selectedCamera} onChange={e => setSelectedCamera(e.target.value)} style={{ padding: '8px 12px', borderRadius: '8px', background: 'rgba(255,255,255,0.05)', color: '#fff', border: '1px solid rgba(255,255,255,0.1)' }}>
                     <option value="all">All Cameras</option>
                     {cameras.map(c => <option key={c} value={c}>{c}</option>)}
                   </select>
-                  <input type="datetime-local" value={filterStartTime} onChange={e => setFilterStartTime(e.target.value)} style={{ padding: '5px', borderRadius: '4px', background: '#333', color: '#fff', border: '1px solid #444' }} />
-                  <input type="datetime-local" value={filterEndTime} onChange={e => setFilterEndTime(e.target.value)} style={{ padding: '5px', borderRadius: '4px', background: '#333', color: '#fff', border: '1px solid #444' }} />
-                  <button onClick={() => { setFilterStartTime(""); setFilterEndTime(""); setSelectedCamera("all"); }} style={{ padding: '6px 12px', borderRadius: '4px', background: '#555', color: '#fff', border: 'none', cursor: 'pointer' }}>Reset</button>
+                  <input type="datetime-local" value={filterStartTime} onChange={e => setFilterStartTime(e.target.value)} style={{ padding: '8px 12px', borderRadius: '8px', background: 'rgba(255,255,255,0.05)', color: '#fff', border: '1px solid rgba(255,255,255,0.1)' }} />
+                  <input type="datetime-local" value={filterEndTime} onChange={e => setFilterEndTime(e.target.value)} style={{ padding: '8px 12px', borderRadius: '8px', background: 'rgba(255,255,255,0.05)', color: '#fff', border: '1px solid rgba(255,255,255,0.1)' }} />
+                  <button onClick={() => { setFilterStartTime(""); setFilterEndTime(""); setSelectedCamera("all"); }} style={{ padding: '8px 16px', borderRadius: '8px', background: 'rgba(255,255,255,0.1)', color: '#fff', border: '1px solid rgba(255,255,255,0.1)', cursor: 'pointer' }}>Reset</button>
                 </div>
               </div>
               <div className="gallery-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '15px', overflowY: 'auto', paddingRight: '10px' }}>
