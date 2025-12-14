@@ -950,8 +950,19 @@ function App() {
                             alt={`Accident snapshot ${idx + 1}`}
                             className="detail-snapshot"
                             title={`Snapshot ${idx + 1}`}
+                            onError={(e) => {
+                              console.log("Snapshot load error", e);
+                              e.target.style.display = "none";
+                              e.target.parentNode.style.background = "#222";
+                              e.target.parentNode.style.display = "flex";
+                              e.target.parentNode.style.alignItems = "center";
+                              e.target.parentNode.style.justifyContent = "center";
+                              e.target.parentNode.textContent = "Image not found";
+                              e.target.parentNode.style.color = "#888";
+                              e.target.parentNode.style.fontSize = "12px";
+                            }}
                           />
-                          <span className="snapshot-label">#{idx + 1}</span>
+                          <span className="snapshot-label" style={{ position: 'absolute', bottom: '4px', right: '4px', background: 'rgba(0,0,0,0.6)', padding: '2px 6px', borderRadius: '4px', fontSize: '10px' }}>#{idx + 1}</span>
                         </div>
                       ))}
                     </div>
@@ -963,7 +974,21 @@ function App() {
                 </div>
                 <div className="detail-map">
                   <h3>Accident location</h3>
-                  {detailMapUrl ? (
+                  {activeEvent.location_lat && activeEvent.location_lng ? (
+                    <div style={{ height: "300px", width: "100%", borderRadius: "12px", overflow: "hidden" }}>
+                      <MapContainer
+                        center={[activeEvent.location_lat, activeEvent.location_lng]}
+                        zoom={15}
+                        style={{ height: "100%", width: "100%" }}
+                      >
+                        <TileLayer
+                          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                        />
+                        <Marker position={[activeEvent.location_lat, activeEvent.location_lng]} />
+                      </MapContainer>
+                    </div>
+                  ) : detailMapUrl ? (
                     <iframe
                       src={detailMapUrl}
                       title="Accident location map"

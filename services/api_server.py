@@ -51,6 +51,13 @@ DB_NAME = "accident_db"
 client = MongoClient(MONGO_URI)
 db = client[DB_NAME]
 
+# Reset detection_enabled to False on startup
+try:
+    db.cameras.update_many({}, {"$set": {"detection_enabled": False}})
+    print("[api] Reset all cameras to detection_enabled=False")
+except Exception as e:
+    print(f"[api] Warning: Failed to reset camera config: {e}")
+
 # Default video source for the /video_feed endpoint.
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 VIDEO_SOURCES: Dict[str, Dict[str, Any]] = {
@@ -536,7 +543,7 @@ def video_sources():
                 "location": loc,
                 "location_lat": lat,
                 "location_lng": lng,
-                "detection_enabled": CAMERA_METADATA.get(cam_id, {}).get("detection_enabled", True) if cam_id else True
+                "detection_enabled": CAMERA_METADATA.get(cam_id, {}).get("detection_enabled", False) if cam_id else False
             }
         )
     return options
