@@ -188,12 +188,17 @@ def main(
     def open_capture(src_val):
         try:
             s = int(src_val)
-            # On Windows, using CAP_DSHOW is often faster/more reliable for webcams
+            # Try DSHOW first (best for many physical webcams on Windows)
             if sys.platform == "win32":
+                print(f"[publisher] Attempting to open source {s} with CAP_DSHOW...")
                 c = cv2.VideoCapture(s, cv2.CAP_DSHOW)
+                if not c.isOpened():
+                    print(f"[publisher] CAP_DSHOW failed for {s}. Falling back to default (MSMF)...")
+                    c = cv2.VideoCapture(s)
             else:
                 c = cv2.VideoCapture(s)
         except:
+            # Not an integer -> likely a file path or URL
             s = src_val
             c = cv2.VideoCapture(s)
         
