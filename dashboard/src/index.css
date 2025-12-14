@@ -1,11 +1,12 @@
 :root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  font-family: 'Inter', system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
 
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
+  color-scheme: dark;
+  color: rgba(255, 255, 255, 0.9);
+  background-color: #000;
+  /* Deep black base */
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -13,148 +14,62 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-
-a:hover {
-  color: #535bf2;
+/* Zero out defaults */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
 }
 
 body {
   margin: 0;
   display: flex;
-  place-items: center;
   min-width: 320px;
   min-height: 100vh;
+  background: #000;
+  overflow: hidden;
+  /* App handles scrolling */
 }
 
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
+/* Custom Scrollbar Global */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
 }
 
-button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  background-color: #1a1a1a;
-  cursor: pointer;
-  transition: border-color 0.25s;
-}
-
-button:hover {
-  border-color: #646cff;
-}
-
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
-}
-
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
-  }
-
-  a:hover {
-    color: #747bff;
-  }
-
-  button {
-    background-color: #f9f9f9;
-  }
-}
-
-/* Shared styling for the full dashboard */
-
-body {
-  margin: 0;
-  background: #081018;
-  color: #e5eef5;
-  font-family: "Inter", Arial, sans-serif;
-}
-
-code {
-  font-size: 12px;
-  background: #0003;
-  padding: 2px 4px;
-  border-radius: 4px;
-}
-
-/* Everything else is included inline inside App.jsx styles */
-
-.camera-map-name-input,
-.camera-map-location-input {
+::-webkit-scrollbar-track {
   background: transparent;
-  border: 1px solid transparent;
-  color: inherit;
-  font-family: inherit;
-  padding: 4px;
-  border-radius: 4px;
-  width: 100%;
 }
 
-.camera-map-name-input:hover,
-.camera-map-location-input:hover,
-.camera-map-name-input:focus,
-.camera-map-location-input:focus {
-  border-color: #646cff;
-  background: rgba(255, 255, 255, 0.05);
-  outline: none;
+::-webkit-scrollbar-thumb {
+  background: #334155;
+  border-radius: 99px;
 }
 
-.camera-map-name-input {
-  font-size: 1.2rem;
-  font-weight: bold;
-  margin-bottom: 4px;
+::-webkit-scrollbar-thumb:hover {
+  background: #475569;
 }
 
-
-.suggestions-dropdown {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  right: 0;
-  background: #333;
-  border: 1px solid #555;
-  border-radius: 4px;
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  z-index: 1000;
-  max-height: 200px;
-  overflow-y: auto;
+/* Leaflet Overrides for Dark Mode */
+.leaflet-container {
+  background: #0f172a !important;
+  font-family: inherit !important;
 }
 
-.suggestions-dropdown li {
-  padding: 8px;
-  cursor: pointer;
-  border-bottom: 1px solid #444;
-  font-size: 0.9em;
+.leaflet-bar a {
+  background-color: #1e293b !important;
+  color: #e2e8f0 !important;
+  border-bottom: 1px solid #334155 !important;
 }
 
-.suggestions-dropdown li:hover {
-  background: #444;
+.leaflet-bar a:hover {
+  background-color: #334155 !important;
 }
 
-.detection-toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  cursor: pointer;
-  font-weight: 600;
-  font-size: 0.9rem;
-}
-
-.detection-toggle input {
-  width: 16px;
-  height: 16px;
-  cursor: pointer;
+.leaflet-control-attribution {
+  background: rgba(15, 23, 42, 0.8) !important;
+  color: #94a3b8 !important;
+  backdrop-filter: blur(4px);
 }
