@@ -440,8 +440,11 @@ function App() {
                       {/* This button should be available for ANY source to let user force it as detector input */}
                       <button className="btn-primary" style={{ fontSize: 12, padding: '6px 12px' }} onClick={() => {
                         const actualSource = currentVideoSource?.requires_value ? currentValue : currentVideoSource?.source;
-
-                        if (!actualSource) return alert("Source value is missing/invalid");
+                        // Debugging: Show why it might be failing
+                        if (actualSource === undefined || actualSource === null || actualSource === "") {
+                          alert(`Debug: Invalid source. actualSource=${actualSource}, type=${typeof actualSource}`);
+                          return;
+                        }
 
                         // Logic to switch detector source
                         setSelectedVideoSource(""); // Unmount preview first
@@ -493,7 +496,7 @@ function App() {
                 <div className="panel-header">
                   <div className="panel-title"><MapPin size={18} /> Camera Location</div>
                 </div>
-                <div className="camera-config-grid" style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 16 }}>
+                <div className="camera-config-grid" style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 16, position: 'relative', zIndex: 1000 }}>
                   <input
                     className="glass-input"
                     placeholder="Camera Name"

@@ -102,20 +102,8 @@ VIDEO_SOURCES: Dict[str, Dict[str, Any]] = {
         "camera_id": "webcam_1",
         "camera_name": "Auxiliary Webcam",
         "location": "Spare Lab Cam",
-        "requires_value": False,
-        "camera_id": "webcam_1",
-        "camera_name": "Auxiliary Webcam",
-        "location": "Spare Lab Cam",
     },
-    "detector_stream": {
-        "label": "Detector Stream (Processed)",
-        "type": "stream",
-        "description": "Output from the object detection engine",
-        "source": "http://localhost:5001/stream.mjpg",
-        "requires_value": False,
-        "camera_id": "demo_cam_main",
-        "camera_name": "Detector Output"
-    },
+
     "ip_cam_example": {
         "label": "IP camera (RTSP example)",
         "type": "ip",
