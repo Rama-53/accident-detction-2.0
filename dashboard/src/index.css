@@ -1,17 +1,175 @@
+/* Theme Variables */
 :root {
+  /* Base font settings */
   font-family: 'Inter', system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
-
-  color-scheme: dark;
-  color: rgba(255, 255, 255, 0.9);
-  background-color: #000;
-  /* Deep black base */
-
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* Dark Theme (Default) */
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  /* Backgrounds */
+  --bg-app: #020617;
+  --bg-sidebar: rgba(15, 23, 42, 0.6);
+  --bg-body: #000;
+
+  /* Glass Effects */
+  --glass-bg: rgba(30, 41, 59, 0.4);
+  --glass-bg-hover: rgba(51, 65, 85, 0.5);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --glass-border-hover: rgba(255, 255, 255, 0.12);
+
+  /* Primary Colors */
+  --primary: #3b82f6;
+  --primary-hover: #60a5fa;
+  --primary-glow: rgba(59, 130, 246, 0.5);
+  --primary-bg: rgba(59, 130, 246, 0.1);
+  --primary-bg-hover: rgba(59, 130, 246, 0.2);
+
+  /* Accent Colors */
+  --accent: #10b981;
+  --accent-glow: rgba(16, 185, 129, 0.4);
+  --accent-bg: rgba(16, 185, 129, 0.2);
+
+  /* Status Colors */
+  --danger: #ef4444;
+  --danger-bg: rgba(239, 68, 68, 0.2);
+  --danger-text: #fca5a5;
+  --danger-border: rgba(239, 68, 68, 0.3);
+  --success: #10b981;
+  --success-bg: rgba(16, 185, 129, 0.2);
+  --success-text: #34d399;
+  --success-border: rgba(16, 185, 129, 0.3);
+
+  /* Text Colors */
+  --text-main: #f8fafc;
+  --text-secondary: #e2e8f0;
+  --text-muted: #94a3b8;
+  --text-dimmed: #64748b;
+
+  /* Surface Colors */
+  --surface-dark: #000;
+  --surface-overlay: rgba(0, 0, 0, 0.8);
+  --surface-input: rgba(0, 0, 0, 0.2);
+  --surface-card: rgba(255, 255, 255, 0.03);
+  --surface-card-hover: rgba(255, 255, 255, 0.06);
+
+  /* Border Colors */
+  --border-default: #334155;
+  --border-light: rgba(255, 255, 255, 0.1);
+
+  /* Scrollbar */
+  --scrollbar-track: transparent;
+  --scrollbar-thumb: #334155;
+  --scrollbar-thumb-hover: #475569;
+
+  /* Map */
+  --map-bg: #0f172a;
+  --map-control-bg: #1e293b;
+  --map-control-text: #e2e8f0;
+  --map-control-border: #334155;
+
+  /* Gradients */
+  --gradient-brand: linear-gradient(135deg, #fff 0%, #cbd5e1 100%);
+  --gradient-primary: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  --gradient-app: radial-gradient(circle at 15% 50%, rgba(59, 130, 246, 0.08), transparent 25%),
+    radial-gradient(circle at 85% 30%, rgba(16, 185, 129, 0.05), transparent 25%);
+}
+
+/* Light Theme */
+[data-theme="light"] {
+  color-scheme: light;
+
+  /* Backgrounds */
+  --bg-app: #f1f5f9;
+  --bg-sidebar: rgba(255, 255, 255, 0.9);
+  --bg-body: #e2e8f0;
+
+  /* Glass Effects */
+  --glass-bg: rgba(255, 255, 255, 0.8);
+  --glass-bg-hover: rgba(255, 255, 255, 0.95);
+  --glass-border: rgba(0, 0, 0, 0.08);
+  --glass-border-hover: rgba(0, 0, 0, 0.12);
+
+  /* Primary Colors */
+  --primary: #2563eb;
+  --primary-hover: #3b82f6;
+  --primary-glow: rgba(37, 99, 235, 0.3);
+  --primary-bg: rgba(37, 99, 235, 0.1);
+  --primary-bg-hover: rgba(37, 99, 235, 0.15);
+
+  /* Accent Colors */
+  --accent: #059669;
+  --accent-glow: rgba(5, 150, 105, 0.3);
+  --accent-bg: rgba(5, 150, 105, 0.15);
+
+  /* Status Colors */
+  --danger: #dc2626;
+  --danger-bg: rgba(220, 38, 38, 0.1);
+  --danger-text: #dc2626;
+  --danger-border: rgba(220, 38, 38, 0.2);
+  --success: #059669;
+  --success-bg: rgba(5, 150, 105, 0.1);
+  --success-text: #059669;
+  --success-border: rgba(5, 150, 105, 0.2);
+
+  /* Text Colors */
+  --text-main: #1e293b;
+  --text-secondary: #334155;
+  --text-muted: #64748b;
+  --text-dimmed: #94a3b8;
+
+  /* Surface Colors */
+  --surface-dark: #1e293b;
+  --surface-overlay: rgba(255, 255, 255, 0.9);
+  --surface-input: rgba(0, 0, 0, 0.05);
+  --surface-card: rgba(0, 0, 0, 0.03);
+  --surface-card-hover: rgba(0, 0, 0, 0.06);
+
+  /* Border Colors */
+  --border-default: #cbd5e1;
+  --border-light: rgba(0, 0, 0, 0.1);
+
+  /* Scrollbar */
+  --scrollbar-track: transparent;
+  --scrollbar-thumb: #cbd5e1;
+  --scrollbar-thumb-hover: #94a3b8;
+
+  /* Map */
+  --map-bg: #f8fafc;
+  --map-control-bg: #ffffff;
+  --map-control-text: #334155;
+  --map-control-border: #e2e8f0;
+
+  /* Gradients */
+  --gradient-brand: linear-gradient(135deg, #1e293b 0%, #475569 100%);
+  --gradient-primary: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  --gradient-app: radial-gradient(circle at 15% 50%, rgba(59, 130, 246, 0.06), transparent 25%),
+    radial-gradient(circle at 85% 30%, rgba(16, 185, 129, 0.04), transparent 25%);
+}
+
+/* Default to dark theme */
+:root {
+  color-scheme: dark;
+}
+
+/* Smooth theme transition */
+html {
+  transition: background-color 0.3s ease;
+}
+
+html,
+html * {
+  transition: background-color 0.3s ease,
+    border-color 0.3s ease,
+    color 0.25s ease,
+    box-shadow 0.3s ease;
 }
 
 /* Zero out defaults */
@@ -28,9 +186,9 @@ body {
   display: flex;
   min-width: 320px;
   min-height: 100vh;
-  background: #000;
+  background: var(--bg-body);
+  color: var(--text-main);
   overflow: hidden;
-  /* App handles scrolling */
 }
 
 /* Custom Scrollbar Global */
@@ -40,36 +198,36 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  background: transparent;
+  background: var(--scrollbar-track);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #334155;
+  background: var(--scrollbar-thumb);
   border-radius: 99px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #475569;
+  background: var(--scrollbar-thumb-hover);
 }
 
-/* Leaflet Overrides for Dark Mode */
+/* Leaflet Overrides for Theme */
 .leaflet-container {
-  background: #0f172a !important;
+  background: var(--map-bg) !important;
   font-family: inherit !important;
 }
 
 .leaflet-bar a {
-  background-color: #1e293b !important;
-  color: #e2e8f0 !important;
-  border-bottom: 1px solid #334155 !important;
+  background-color: var(--map-control-bg) !important;
+  color: var(--map-control-text) !important;
+  border-bottom: 1px solid var(--map-control-border) !important;
 }
 
 .leaflet-bar a:hover {
-  background-color: #334155 !important;
+  background-color: var(--glass-bg-hover) !important;
 }
 
 .leaflet-control-attribution {
-  background: rgba(15, 23, 42, 0.8) !important;
-  color: #94a3b8 !important;
+  background: var(--surface-overlay) !important;
+  color: var(--text-muted) !important;
   backdrop-filter: blur(4px);
 }

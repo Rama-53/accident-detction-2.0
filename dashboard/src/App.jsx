@@ -14,7 +14,9 @@ import {
   AlertTriangle,
   X,
   Radio,
-  Monitor
+  Monitor,
+  Sun,
+  Moon
 } from "lucide-react";
 
 // Fix for default marker icon in React Leaflet
@@ -46,10 +48,28 @@ function App() {
   const [layoutMode, setLayoutMode] = useState("auto"); // auto, 2x2, focus, 1x1
   const [showIntro, setShowIntro] = useState(true);
 
+  // Theme State
+  const [theme, setTheme] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('theme') || 'dark';
+    }
+    return 'dark';
+  });
+
   // Settings & Filters
   const [multiDetectionEnabled, setMultiDetectionEnabled] = useState(false);
   const [filterStartTime, setFilterStartTime] = useState("");
   const [filterEndTime, setFilterEndTime] = useState("");
+
+  // Apply theme to document
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('theme', theme);
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme(prev => prev === 'dark' ? 'light' : 'dark');
+  };
 
   // Fetch System Config
   useEffect(() => {
@@ -359,6 +379,12 @@ function App() {
             <Settings className="icon" /> Settings
           </button>
         </nav>
+
+        {/* Theme Toggle */}
+        <button className="theme-toggle" onClick={toggleTheme}>
+          {theme === 'dark' ? <Sun className="icon" /> : <Moon className="icon" />}
+          {theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
+        </button>
       </aside>
 
       {/* Main Content */}
@@ -381,7 +407,7 @@ function App() {
                 {cameras.map((cam) => <option key={cam} value={cam}>{cam}</option>)}
               </select>
             </div>
-            <div className={`badge ${status === 'Running' ? 'badge-high' : 'badge-high'}`} style={{ background: status === 'Running' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)', color: status === 'Running' ? '#34d399' : '#fca5a5', border: status === 'Running' ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid rgba(239, 68, 68, 0.3)' }}>
+            <div className={`badge ${status === 'Running' ? 'badge-success' : 'badge-high'}`}>
               {status}
             </div>
           </div>
@@ -424,7 +450,7 @@ function App() {
 
                 {/* Source Input Area */}
                 {selectedVideoSource && (
-                  <div style={{ marginBottom: 16, padding: 12, background: 'rgba(255,255,255,0.03)', borderRadius: 8 }}>
+                  <div style={{ marginBottom: 16, padding: 12, background: 'var(--surface-card)', borderRadius: 8 }}>
                     {currentVideoSource?.requires_value && (
                       <input
                         type={currentVideoSource.value_type === "number" ? "number" : "text"}
@@ -516,9 +542,9 @@ function App() {
                       }}
                     />
                     {showSuggestions && locationSuggestions.length > 0 && (
-                      <ul className="suggestions-dropdown" style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: '#1e293b', border: '1px solid #334155', borderRadius: 8, listStyle: 'none', padding: 0, margin: 0, zIndex: 100 }}>
+                      <ul className="suggestions-dropdown">
                         {locationSuggestions.map((s) => (
-                          <li key={s.place_id} onClick={() => selectSuggestion(s)} style={{ padding: '8px 12px', cursor: 'pointer', borderBottom: '1px solid #334155', fontSize: 12, color: '#e2e8f0' }}>
+                          <li key={s.place_id} onClick={() => selectSuggestion(s)}>
                             {s.display_name}
                           </li>
                         ))}
@@ -587,7 +613,7 @@ function App() {
 
         {/* Camera Wall */}
         {activeTab === "camerawall" && (
-          <div className="glass-panel">
+          <div className="glass-panel" style={{ width: '100%' }}>
             <div className="panel-header" style={{ marginBottom: 16 }}>
               <div className="panel-title"><Video size={18} /> Multi-Camera Wall</div>
               <div className="layout-switcher" style={{ display: 'flex', gap: 8 }}>
@@ -602,9 +628,9 @@ function App() {
               {videoSources.map(src => {
                 const checked = multiSourceIds.includes(src.id);
                 return (
-                  <div key={src.id} className={`multi-feed-option ${checked ? 'selected' : ''}`} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6, padding: '8px 12px', background: checked ? 'rgba(59,130,246,0.15)' : 'rgba(255,255,255,0.03)', borderRadius: 12, border: checked ? '1px solid rgba(59,130,246,0.5)' : '1px solid var(--glass-border)', transition: 'all 0.2s ease' }}>
+                  <div key={src.id} className={`multi-feed-option ${checked ? 'selected' : ''}`}>
                     <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', flex: 1 }}>
-                      <div style={{ width: 16, height: 16, borderRadius: 4, border: '1px solid rgba(255,255,255,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', background: checked ? '#3b82f6' : 'transparent' }}>
+                      <div style={{ width: 16, height: 16, borderRadius: 4, border: '1px solid var(--glass-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', background: checked ? 'var(--primary)' : 'transparent' }}>
                         {checked && <div style={{ width: 8, height: 8, background: '#fff', borderRadius: 2 }}></div>}
                       </div>
                       <input type="checkbox" checked={checked} style={{ display: 'none' }} onChange={e => {
@@ -612,12 +638,12 @@ function App() {
                           if (multiSourceIds.length < MAX_MULTI_FEEDS) setMultiSourceIds(p => [...p, src.id]);
                         } else setMultiSourceIds(p => p.filter(id => id !== src.id));
                       }} />
-                      <span style={{ fontSize: 13, fontWeight: 500, color: checked ? '#fff' : 'var(--text-muted)' }}>{src.label}</span>
+                      <span style={{ fontSize: 13, fontWeight: 500, color: checked ? 'var(--text-main)' : 'var(--text-muted)' }}>{src.label}</span>
                     </label>
 
                     <label style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, cursor: 'pointer' }}>
-                      <div className={`toggle-track ${src.detection_enabled ? 'on' : ''}`} style={{ width: 24, height: 14, background: src.detection_enabled ? 'rgba(16, 185, 129, 0.3)' : 'rgba(255,255,255,0.1)', borderRadius: 99, position: 'relative', transition: '0.2s' }}>
-                        <div style={{ position: 'absolute', top: 2, left: src.detection_enabled ? 12 : 2, width: 10, height: 10, background: src.detection_enabled ? '#10b981' : '#64748b', borderRadius: '50%', transition: '0.2s' }}></div>
+                      <div className={`toggle-track ${src.detection_enabled ? 'on' : ''}`} style={{ width: 24, height: 14, background: src.detection_enabled ? 'var(--accent-bg)' : 'var(--surface-card)', borderRadius: 99, position: 'relative', transition: '0.2s' }}>
+                        <div style={{ position: 'absolute', top: 2, left: src.detection_enabled ? 12 : 2, width: 10, height: 10, background: src.detection_enabled ? 'var(--accent)' : 'var(--text-dimmed)', borderRadius: '50%', transition: '0.2s' }}></div>
                       </div>
                       <input
                         type="checkbox"
@@ -629,7 +655,7 @@ function App() {
                           setVideoSources(prev => prev.map(s => s.id === src.id ? { ...s, detection_enabled: val } : s));
                         }}
                       />
-                      <span style={{ fontSize: 9, color: src.detection_enabled ? '#34d399' : '#64748b' }}>AI</span>
+                      <span style={{ fontSize: 9, color: src.detection_enabled ? 'var(--success-text)' : 'var(--text-dimmed)' }}>AI</span>
                     </label>
                   </div>
                 );
@@ -638,9 +664,9 @@ function App() {
 
             <div className={`wall-grid-${layoutMode}`} style={{ minHeight: 400, transition: 'all 0.3s ease' }}>
               {multiSourceIds.map(sid => (
-                <div key={sid} className="animate-enter resizable-card" style={{ background: '#000', width: '100%', height: '100%', borderRadius: 16, overflow: 'hidden', position: 'relative', border: '1px solid var(--glass-border)', boxShadow: '0 4px 20px rgba(0,0,0,0.3)' }}>
-                  <div style={{ position: 'absolute', top: 12, left: 12, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', padding: '6px 10px', borderRadius: 8, fontSize: 12, fontWeight: 500, zIndex: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <div style={{ width: 6, height: 6, borderRadius: '50%', background: getSourceMeta(sid)?.detection_enabled ? '#10b981' : '#cbd5e1', boxShadow: getSourceMeta(sid)?.detection_enabled ? '0 0 8px #10b981' : 'none' }}></div>
+                <div key={sid} className="animate-enter resizable-card" style={{ background: 'var(--surface-dark)', width: '100%', height: '100%', borderRadius: 16, overflow: 'hidden', position: 'relative', border: '1px solid var(--glass-border)', boxShadow: '0 4px 20px rgba(0,0,0,0.3)' }}>
+                  <div style={{ position: 'absolute', top: 12, left: 12, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', padding: '6px 10px', borderRadius: 8, fontSize: 12, fontWeight: 500, zIndex: 10, display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-main)' }}>
+                    <div style={{ width: 6, height: 6, borderRadius: '50%', background: getSourceMeta(sid)?.detection_enabled ? 'var(--accent)' : 'var(--text-dimmed)', boxShadow: getSourceMeta(sid)?.detection_enabled ? '0 0 8px var(--accent)' : 'none' }}></div>
                     {getSourceMeta(sid)?.label}
                   </div>
                   <img src={buildFeedUrl(sid)} style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={e => e.target.style.opacity = 0} />
@@ -653,7 +679,7 @@ function App() {
 
         {/* Alerts Page (Full History) */}
         {activeTab === "alerts" && (
-          <div className="glass-panel" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+          <div className="glass-panel" style={{ height: '100%', width: '100%', display: 'flex', flexDirection: 'column' }}>
             <div className="panel-header" style={{ flexWrap: 'wrap', gap: 12 }}>
               <div className="panel-title"><AlertTriangle size={18} /> Alert History</div>
 
@@ -682,8 +708,9 @@ function App() {
                   style={{ padding: '6px 12px', fontSize: 12, width: 'auto' }}
                 />
                 <button
+                  className="btn-secondary"
                   onClick={() => { setFilterStartTime(""); setFilterEndTime(""); setSelectedCamera("all"); }}
-                  style={{ padding: '6px 12px', borderRadius: '8px', background: 'rgba(255,255,255,0.1)', color: '#fff', border: '1px solid rgba(255,255,255,0.1)', cursor: 'pointer', fontSize: 12 }}
+                  style={{ fontSize: 12 }}
                 >
                   Reset
                 </button>
@@ -698,15 +725,15 @@ function App() {
                 return (
                   <div key={e.id} className="event-card" onClick={() => setActiveEvent(e)} style={{ display: 'grid', gridTemplateColumns: '80px 1fr auto', gap: 16, alignItems: 'center', padding: 12 }}>
                     {/* Thumbnail */}
-                    <div style={{ width: 80, height: 60, background: '#000', borderRadius: 6, overflow: 'hidden', flexShrink: 0 }}>
+                    <div style={{ width: 80, height: 60, background: 'var(--surface-dark)', borderRadius: 6, overflow: 'hidden', flexShrink: 0 }}>
                       {e.snapshot_id ? (
                         <img src={`${BACKEND_URL}/snapshot/${e.snapshot_id}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={ev => ev.target.style.display = 'none'} />
-                      ) : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#334155', fontSize: 10 }}>No Image</div>}
+                      ) : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-dimmed)', fontSize: 10 }}>No Image</div>}
                     </div>
 
                     {/* Main Details: Camera & Location */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 4, overflow: 'hidden' }}>
-                      <div style={{ fontWeight: 600, fontSize: 15, color: '#e2e8f0', display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <div style={{ fontWeight: 600, fontSize: 15, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 8 }}>
                         {e.camera_id}
                         <span className={`badge badge-high`} style={{ fontSize: 10, padding: '2px 6px' }}>{e.severity}</span>
                       </div>
@@ -717,7 +744,7 @@ function App() {
 
                     {/* Time & Date */}
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2, minWidth: 80 }}>
-                      <div style={{ fontSize: 14, fontWeight: 500, color: '#cbd5e1' }}>{timeStr}</div>
+                      <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-secondary)' }}>{timeStr}</div>
                       <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{dateStr}</div>
                     </div>
                   </div>
@@ -729,7 +756,7 @@ function App() {
 
         {/* Gallery Page */}
         {activeTab === "gallery" && (
-          <div className="glass-panel" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+          <div className="glass-panel" style={{ height: '100%', width: '100%', display: 'flex', flexDirection: 'column' }}>
             <div className="panel-header" style={{ flexWrap: 'wrap', gap: 12 }}>
               <div className="panel-title"><Images size={18} /> Snapshot Gallery</div>
               <div className="filters-bar" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
@@ -779,7 +806,7 @@ function App() {
 
         {/* Settings Page */}
         {activeTab === "settings" && (
-          <div className="glass-panel">
+          <div className="glass-panel" style={{ width: '100%' }}>
             <div className="panel-header">
               <div className="panel-title"><Settings size={18} /> System Settings</div>
             </div>
@@ -812,27 +839,27 @@ function App() {
 
       {/* Detail Overlay */}
       {activeEvent && (
-        <div className="detail-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, backdropFilter: 'blur(5px)' }}>
-          <div className="glass-panel" style={{ width: '90%', maxWidth: 1000, height: '90%', overflowY: 'auto', background: '#0f172a', border: '1px solid #334155' }}>
-            <div className="panel-header" style={{ borderBottom: '1px solid #334155', paddingBottom: 16 }}>
+        <div className="detail-overlay">
+          <div className="glass-panel" style={{ width: '90%', maxWidth: 1000, height: '90%', overflowY: 'auto' }}>
+            <div className="panel-header" style={{ borderBottom: '1px solid var(--glass-border)', paddingBottom: 16 }}>
               <div>
                 <h2 style={{ margin: 0 }}>Accident Details</h2>
                 <div className="event-time" style={{ marginTop: 4 }}>ID: {activeEvent.id}</div>
               </div>
-              <button onClick={() => setActiveEvent(null)} style={{ background: 'transparent', border: 'none', color: '#fff', cursor: 'pointer' }}><X /></button>
+              <button onClick={() => setActiveEvent(null)} style={{ background: 'transparent', border: 'none', color: 'var(--text-main)', cursor: 'pointer' }}><X /></button>
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 24, marginTop: 24 }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                <div style={{ aspectRatio: '16/9', background: '#000', borderRadius: 12, overflow: 'hidden', border: '1px solid #334155', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div style={{ aspectRatio: '16/9', background: 'var(--surface-dark)', borderRadius: 12, overflow: 'hidden', border: '1px solid var(--glass-border)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   {activeEvent.snapshot_id ? (
                     <img src={`${BACKEND_URL}/snapshot/${activeEvent.snapshot_id}`} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-                  ) : <span style={{ color: '#64748b' }}>No Snapshot</span>}
+                  ) : <span style={{ color: 'var(--text-dimmed)' }}>No Snapshot</span>}
                 </div>
                 <div className="detail-info-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
                   <div className="glass-panel" style={{ padding: 12 }}>
                     <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>SEVERITY</div>
-                    <div style={{ fontSize: 16, fontWeight: 600, color: '#fca5a5' }}>{activeEvent.severity}</div>
+                    <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--danger-text)' }}>{activeEvent.severity}</div>
                   </div>
                   <div className="glass-panel" style={{ padding: 12 }}>
                     <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>TYPE</div>
@@ -845,14 +872,14 @@ function App() {
                 </div>
               </div>
               <div>
-                <div style={{ height: 300, background: '#000', borderRadius: 12, overflow: 'hidden', marginBottom: 16 }}>
+                <div style={{ height: 300, background: 'var(--surface-dark)', borderRadius: 12, overflow: 'hidden', marginBottom: 16 }}>
                   {activeEvent.location_lat ? (
                     <MapContainer center={[activeEvent.location_lat, activeEvent.location_lng]} zoom={15} style={{ width: '100%', height: '100%' }}>
                       <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
                       <Marker position={[activeEvent.location_lat, activeEvent.location_lng]} />
                     </MapContainer>
                   ) : (
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#64748b' }}>No GPS Data</div>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-dimmed)' }}>No GPS Data</div>
                   )}
                 </div>
                 <div className="glass-panel" style={{ padding: 16 }}>
