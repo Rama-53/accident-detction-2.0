@@ -1,0 +1,30 @@
+/* src/components/Dashboard.css */
+
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: 5fr 3fr;
+    gap: 24px;
+    width: 100%;
+    margin: 0;
+    min-height: 0;
+    /* Important for scroll */
+}
+
+.col-main {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.col-side {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 600px;
+}
+
+@media (max-width: 1200px) {
+    .dashboard-grid {
+        grid-template-columns: 1fr;
+    }
+}

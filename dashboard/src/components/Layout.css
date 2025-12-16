@@ -1,0 +1,36 @@
+/* src/components/Layout.css */
+
+.app-layout {
+    display: flex;
+    width: 100vw;
+    height: 100vh;
+    background: var(--gradient-app), var(--bg-app);
+    overflow: hidden;
+}
+
+.main-content-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 32px 40px;
+    position: relative;
+    width: calc(100vw - var(--sidebar-width));
+    min-width: 0;
+}
+
+.content-scroll-area {
+    flex: 1;
+    overflow-y: auto;
+    min-height: 0;
+    /* Add padding to bottom to prevent cut-off on scroll */
+    padding-bottom: 20px;
+}
+
+/* Custom fade mask for scroll area top/bottom */
+.content-scroll-area {
+    mask-image: linear-gradient(to bottom, transparent 0%, black 20px, black calc(100% - 20px), transparent 100%);
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 20px, black calc(100% - 20px), transparent 100%);
+    /* Just kidding, mask might be too aggressive for now, let's keep it simple */
+    mask-image: none;
+    -webkit-mask-image: none;
+}

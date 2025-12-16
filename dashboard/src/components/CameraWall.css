@@ -1,0 +1,303 @@
+/* src/components/CameraWall.css */
+
+.camera-wall-panel {
+    width: 100%;
+    padding: 20px;
+}
+
+.camera-wall-panel .panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.camera-wall-panel .panel-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.layout-switcher {
+    display: flex;
+    gap: 6px;
+}
+
+.layout-btn {
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    border: 1px solid var(--glass-border);
+    background: var(--surface-card);
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.layout-btn:hover {
+    background: var(--surface-card-hover);
+    color: var(--text-main);
+}
+
+.layout-btn.active {
+    background: var(--primary-bg);
+    color: var(--primary);
+    border-color: var(--primary-bg-hover);
+    box-shadow: 0 0 12px var(--primary-glow);
+}
+
+.grid-icon-2x2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2px;
+    width: 14px;
+    height: 14px;
+}
+
+.grid-icon-2x2 span {
+    background: currentColor;
+    border-radius: 1px;
+}
+
+.grid-icon-1x1 {
+    width: 14px;
+    height: 14px;
+    background: currentColor;
+    border-radius: 2px;
+}
+
+/* Multi Feed Controls */
+.multi-feed-controls {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.multi-feed-option {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 10px 14px;
+    background: var(--surface-card);
+    border-radius: 12px;
+    border: 1px solid var(--glass-border);
+    transition: all 0.2s ease;
+}
+
+.multi-feed-option.selected {
+    background: var(--primary-bg);
+    border-color: var(--primary-bg-hover);
+}
+
+.camera-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    flex: 1;
+}
+
+.camera-checkbox input {
+    display: none;
+}
+
+.checkbox-box {
+    width: 18px;
+    height: 18px;
+    border-radius: 5px;
+    border: 1px solid var(--glass-border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    transition: all 0.2s ease;
+}
+
+.checkbox-box.checked {
+    background: var(--primary);
+    border-color: var(--primary);
+}
+
+.checkbox-check {
+    width: 8px;
+    height: 8px;
+    background: #fff;
+    border-radius: 2px;
+}
+
+.camera-name {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-muted);
+    transition: color 0.2s ease;
+}
+
+.multi-feed-option.selected .camera-name {
+    color: var(--text-main);
+}
+
+.ai-toggle {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+}
+
+.ai-toggle input {
+    display: none;
+}
+
+.ai-toggle .toggle-track {
+    width: 28px;
+    height: 16px;
+    background: var(--surface-card-hover);
+    border-radius: 99px;
+    position: relative;
+    transition: all 0.2s ease;
+}
+
+.ai-toggle .toggle-track.on {
+    background: var(--accent-bg);
+}
+
+.ai-toggle .toggle-thumb {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 12px;
+    height: 12px;
+    background: var(--text-dimmed);
+    border-radius: 50%;
+    transition: all 0.2s ease;
+}
+
+.ai-toggle .toggle-track.on .toggle-thumb {
+    left: 12px;
+    background: var(--accent);
+    box-shadow: 0 0 8px var(--accent-glow);
+}
+
+.ai-label {
+    font-size: 9px;
+    font-weight: 600;
+    color: var(--text-dimmed);
+    text-transform: uppercase;
+}
+
+.ai-label.active {
+    color: var(--success-text);
+}
+
+/* Wall Grid Layouts */
+.wall-grid {
+    min-height: 400px;
+    transition: all 0.3s ease;
+}
+
+.wall-grid-auto {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    align-items: flex-start;
+    justify-content: flex-start;
+}
+
+.wall-grid-auto .wall-feed-card {
+    flex: 1 1 300px;
+}
+
+.wall-grid-2x2 {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+}
+
+.wall-grid-focus {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    grid-template-rows: 1fr 1fr;
+    gap: 16px;
+}
+
+.wall-grid-focus .wall-feed-card:first-child {
+    grid-row: 1 / -1;
+}
+
+.wall-grid-1x1 {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 16px;
+}
+
+.wall-feed-card {
+    aspect-ratio: 16/9;
+    position: relative;
+    background: var(--surface-dark);
+    border-radius: 16px;
+    overflow: hidden;
+    border: 1px solid var(--glass-border);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+}
+
+.wall-feed-card img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.feed-label {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(8px);
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 500;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text-main);
+}
+
+.status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--text-dimmed);
+}
+
+.status-dot.active {
+    background: var(--accent);
+    box-shadow: 0 0 8px var(--accent-glow);
+}
+
+.wall-placeholder {
+    width: 100%;
+    min-height: 300px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    color: var(--text-dimmed);
+    border: 2px dashed var(--glass-border);
+    border-radius: 16px;
+}
+
+.wall-placeholder svg {
+    opacity: 0.3;
+}

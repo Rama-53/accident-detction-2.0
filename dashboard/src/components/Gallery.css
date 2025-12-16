@@ -1,0 +1,70 @@
+/* src/components/Gallery.css */
+
+.gallery-panel {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    padding: 24px;
+}
+
+.gallery-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 20px;
+    overflow-y: auto;
+    margin-top: 20px;
+    padding-right: 8px;
+}
+
+.gallery-item {
+    aspect-ratio: 16/9;
+    background: var(--surface-dark);
+    border-radius: 12px;
+    overflow: hidden;
+    position: relative;
+    cursor: pointer;
+    border: 1px solid var(--glass-border);
+    transition: all 0.2s ease;
+}
+
+.gallery-item:hover {
+    transform: translateY(-4px) scale(1.02);
+    border-color: var(--glass-border-hover);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3);
+    z-index: 10;
+}
+
+.gallery-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.3s ease;
+}
+
+.gallery-item:hover img {
+    transform: scale(1.05);
+}
+
+.item-overlay {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 12px;
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.9), transparent);
+    color: #fff;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    font-size: 12px;
+}
+
+.item-camera {
+    font-weight: 600;
+    color: var(--primary-hover);
+}
+
+.item-time {
+    opacity: 0.8;
+}

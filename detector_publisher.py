@@ -126,7 +126,8 @@ def main(
     config_lock = threading.Lock()
     current_config = {
         "detection_enabled": False,
-        "video_source": video_source 
+        "video_source": video_source,
+        "location": location_name
     }
 
     def poll_config_updates():
@@ -158,6 +159,14 @@ def main(
                                 if str(new_src) != str(old_src):
                                     current_config["video_source"] = new_src
                                     print(f"[publisher] Config updated: video_source={new_src}")
+
+                            # 3. Check location
+                            if "location" in doc:
+                                new_loc = doc["location"]
+                                old_loc = current_config.get("location")
+                                if new_loc != old_loc:
+                                    current_config["location"] = new_loc
+                                    print(f"[publisher] Config updated: location={new_loc}")
 
                 except Exception as e:
                     print(f"[publisher] Config poll error: {e}")
@@ -334,9 +343,13 @@ def main(
                     latest_frame_jpeg = buf.tobytes()
 
             # attach metadata
+            # attach metadata (thread-safe read)
+            with config_lock:
+                current_loc = current_config.get("location")
+            
             event["camera_id"] = camera_id
-            if location_name:
-                event["location"] = location_name
+            if current_loc:
+                event["location"] = current_loc
             if location_lat is not None:
                 event["location_lat"] = location_lat
             if location_lng is not None:
