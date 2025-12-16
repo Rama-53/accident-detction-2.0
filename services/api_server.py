@@ -340,11 +340,15 @@ def _doc_to_event(doc: Dict[str, Any]) -> Dict[str, Any]:
             location_lng = coords.get("lng")
 
     camera_meta = CAMERA_METADATA.get(camera_id or "")
-    camera_name = ""
+    
+    # Prefer stored name, fallback to live config
+    camera_name = doc.get("camera_name") or ""
+    
     if camera_meta:
         if not location:
             location = camera_meta.get("location") or ""
-        camera_name = camera_meta.get("name") or camera_meta.get("camera_name") or ""
+        if not camera_name:
+            camera_name = camera_meta.get("name") or camera_meta.get("camera_name") or ""
         if location_lat is None or location_lng is None:
             location_lat = camera_meta.get("lat", location_lat)
             location_lng = camera_meta.get("lng", location_lng)

@@ -127,7 +127,8 @@ def main(
     current_config = {
         "detection_enabled": False,
         "video_source": video_source,
-        "location": location_name
+        "location": location_name,
+        "name": None
     }
 
     def poll_config_updates():
@@ -167,6 +168,14 @@ def main(
                                 if new_loc != old_loc:
                                     current_config["location"] = new_loc
                                     print(f"[publisher] Config updated: location={new_loc}")
+
+                            # 4. Check name
+                            if "name" in doc:
+                                new_name = doc["name"]
+                                old_name = current_config.get("name")
+                                if new_name != old_name:
+                                    current_config["name"] = new_name
+                                    print(f"[publisher] Config updated: name={new_name}")
 
                 except Exception as e:
                     print(f"[publisher] Config poll error: {e}")
@@ -346,8 +355,11 @@ def main(
             # attach metadata (thread-safe read)
             with config_lock:
                 current_loc = current_config.get("location")
+                current_name = current_config.get("name")
             
             event["camera_id"] = camera_id
+            if current_name:
+                event["camera_name"] = current_name
             if current_loc:
                 event["location"] = current_loc
             if location_lat is not None:

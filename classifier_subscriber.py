@@ -104,6 +104,8 @@ def build_mongo_doc(camera_id, frame_idx, detector_ts, event, crops_meta):
         doc["location"] = event["location"]
     if "location_lat" in event:
         doc["location_lat"] = event["location_lat"]
+    if "camera_name" in event:
+        doc["camera_name"] = event["camera_name"]
     if "location_lng" in event:
         doc["location_lng"] = event["location_lng"]
     return doc
