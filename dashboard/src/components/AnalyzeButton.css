@@ -1,0 +1,57 @@
+/* src/components/AnalyzeButton.css */
+
+.analyze-btn {
+    position: relative;
+    overflow: hidden;
+    border-radius: 8px;
+    border: 1px solid var(--glass-border);
+    background: var(--surface-card);
+    padding: 8px 16px;
+    font-family: 'Inter', monospace;
+    /* Using Inter for consistency, or monospace if desired */
+    font-weight: 500;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    transition: color 0.2s;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 140px;
+}
+
+.analyze-btn:hover {
+    color: #fff;
+    border-color: #cf30aa;
+    box-shadow: 0 0 15px rgba(207, 48, 170, 0.3);
+}
+
+.analyze-content {
+    position: relative;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    letter-spacing: 0.05em;
+}
+
+.analyze-gradient-sweep {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    transform: scale(1.25);
+    background: linear-gradient(to top,
+            transparent 20%,
+            #402fb5 40%,
+            #cf30aa 50%,
+            #402fb5 60%,
+            transparent 80%);
+    opacity: 0;
+    transition: opacity 0.3s;
+    pointer-events: none;
+}
+
+.analyze-btn:hover .analyze-gradient-sweep {
+    opacity: 1;
+}

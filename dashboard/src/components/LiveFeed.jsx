@@ -1,6 +1,8 @@
 // src/components/LiveFeed.jsx
 import { Camera } from 'lucide-react';
 import { BACKEND_URL } from '../config';
+import AnalyzeButton from './AnalyzeButton';
+import PremiumInput from './PremiumInput';
 import './LiveFeed.css';
 
 export function LiveFeed({
@@ -61,21 +63,19 @@ export function LiveFeed({
 
             {/* Source Input Area */}
             {selectedVideoSource && currentVideoSource?.requires_value && (
-                <div className="source-input-area">
-                    <input
+                <div className="source-input-area" style={{ marginBottom: '1rem' }}>
+                    <PremiumInput
                         type={currentVideoSource.value_type === 'number' ? 'number' : 'text'}
                         placeholder={currentVideoSource.value_hint || 'Enter path/URL'}
                         value={currentValue}
                         onChange={(e) => setVideoSourceValues(p => ({ ...p, [selectedVideoSource]: e.target.value }))}
-                        className="source-input"
                     />
                 </div>
             )}
 
             {selectedVideoSource && (
                 <div className="source-actions">
-                    <button
-                        className="btn-analyze"
+                    <AnalyzeButton
                         onClick={() => {
                             const actualSource = currentVideoSource?.requires_value ? currentValue : currentVideoSource?.source;
                             if (!actualSource) {
@@ -85,9 +85,7 @@ export function LiveFeed({
                             alert(`Switching detector input to: ${actualSource}... (Please wait 2.5s)`);
                             switchDetectorSource(selectedVideoSource, actualSource);
                         }}
-                    >
-                        Analyze this stream
-                    </button>
+                    />
                 </div>
             )}
 

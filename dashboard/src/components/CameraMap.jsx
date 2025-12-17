@@ -3,6 +3,7 @@ import { MapPin } from 'lucide-react';
 import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
+import PremiumInput from './PremiumInput';
 import './CameraMap.css';
 
 // Fix for default marker icon in React Leaflet
@@ -44,16 +45,16 @@ export function CameraMap({
             </div>
 
             <div className="camera-config-inputs">
-                <input
-                    className="config-input"
-                    placeholder="Camera Name"
-                    value={selectedSourceInfo.name}
-                    onChange={e => updateCameraMetaValue(selectedVideoSource, 'name', e.target.value)}
-                    onBlur={() => saveCameraConfig(selectedVideoSource)}
-                />
+                <div style={{ marginBottom: '15px' }}>
+                    <PremiumInput
+                        placeholder="Camera Name"
+                        value={selectedSourceInfo.name}
+                        onChange={e => updateCameraMetaValue(selectedVideoSource, 'name', e.target.value)}
+                        onBlur={() => saveCameraConfig(selectedVideoSource)}
+                    />
+                </div>
                 <div className="location-input-wrapper">
-                    <input
-                        className="config-input"
+                    <PremiumInput
                         placeholder="Location (City/Place)"
                         value={selectedSourceInfo.location}
                         onChange={e => handleLocationChange(selectedVideoSource, e.target.value)}

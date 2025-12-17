@@ -62,7 +62,12 @@ def make_json_safe(obj: Any) -> Any:
 
 # Global buffer for the latest frame
 latest_frame_lock = threading.Lock()
-latest_frame_jpeg = None
+# Initialize with a placeholder "Starting..." image so the stream is never empty
+_init_img = np.zeros((480, 640, 3), np.uint8)
+cv2.putText(_init_img, "Initializing Detector...", (50, 240), 
+            cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 255, 255), 2)
+_ok, _buf = cv2.imencode(".jpg", _init_img)
+latest_frame_jpeg = _buf.tobytes() if _ok else None
 
 class ThreadingHTTPServer(ThreadingMixIn, HTTPServer):
     pass
@@ -76,8 +81,6 @@ class MJPEGHandler(BaseHTTPRequestHandler):
             try:
                 while True:
                     with latest_frame_lock:
-                        if latest_frame_jpeg is None:
-                            continue
                         data = latest_frame_jpeg
                     
                     self.wfile.write(b'--frame\r\n')

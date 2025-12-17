@@ -1,0 +1,209 @@
+/* src/components/PremiumCard.css */
+
+.premium-card-wrapper {
+    position: relative;
+    display: flex;
+    width: 100%;
+    isolation: isolate;
+    margin-bottom: 12px;
+    /* Spacing between cards */
+}
+
+/* Reusing 'poda' structure class names but scoped to card context if needed */
+.pc-container {
+    position: relative;
+    display: flex;
+    width: 100%;
+    min-height: 80px;
+    /* Minimum height for a card */
+}
+
+.pc-white,
+.pc-border,
+.pc-darkBorderBg,
+.pc-glow {
+    max-height: 100%;
+    max-width: 100%;
+    height: 100%;
+    width: 100%;
+    position: absolute;
+    overflow: hidden;
+    z-index: -1;
+    border-radius: 14px;
+    /* Slightly larger radius for cards */
+    filter: blur(3px);
+    pointer-events: none;
+    transition: all 0.3s ease;
+}
+
+.pc-content {
+    background-color: #010201;
+    /* Dark background matching input */
+    border: none;
+    width: 100%;
+    border-radius: 12px;
+    position: relative;
+    z-index: 10;
+    display: flex;
+    padding: 14px;
+    /* Internal padding */
+    gap: 14px;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+/* Layer styling - White */
+.pc-white {
+    filter: blur(2px);
+}
+
+.pc-white::before {
+    content: "";
+    z-index: -2;
+    text-align: center;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) rotate(83deg);
+    position: absolute;
+    width: 600px;
+    height: 600px;
+    background-repeat: no-repeat;
+    background-position: 0 0;
+    filter: brightness(1.4);
+    background-image: conic-gradient(rgba(0, 0, 0, 0) 0%,
+            #a099d8,
+            rgba(0, 0, 0, 0) 8%,
+            rgba(0, 0, 0, 0) 50%,
+            #dfa2da,
+            rgba(0, 0, 0, 0) 58%);
+    transition: all 2s;
+    opacity: 0;
+    /* Hidden by default */
+}
+
+/* Layer styling - Border */
+.pc-border {
+    filter: blur(0.5px);
+}
+
+.pc-border::before {
+    content: "";
+    z-index: -2;
+    text-align: center;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) rotate(70deg);
+    position: absolute;
+    width: 600px;
+    height: 600px;
+    filter: brightness(1.3);
+    background-repeat: no-repeat;
+    background-position: 0 0;
+    background-image: conic-gradient(#1c191c,
+            #402fb5 5%,
+            #1c191c 14%,
+            #1c191c 50%,
+            #cf30aa 60%,
+            #1c191c 64%);
+    transition: all 2s;
+    opacity: 0;
+    /* Hidden by default */
+}
+
+/* Layer styling - Dark Border Bg */
+.pc-darkBorderBg::before {
+    content: "";
+    z-index: -2;
+    text-align: center;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) rotate(82deg);
+    position: absolute;
+    width: 600px;
+    height: 600px;
+    background-repeat: no-repeat;
+    background-position: 0 0;
+    background-image: conic-gradient(rgba(0, 0, 0, 0),
+            #18116a,
+            rgba(0, 0, 0, 0) 10%,
+            rgba(0, 0, 0, 0) 50%,
+            #6e1b60,
+            rgba(0, 0, 0, 0) 60%);
+    transition: all 2s;
+    opacity: 0;
+    /* Hidden by default */
+}
+
+/* Glow */
+.pc-glow {
+    overflow: hidden;
+    filter: blur(30px);
+    opacity: 0;
+    max-height: 110%;
+    max-width: 110%;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+
+.pc-glow:before {
+    content: "";
+    z-index: -2;
+    text-align: center;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) rotate(60deg);
+    position: absolute;
+    width: 999px;
+    height: 999px;
+    background-repeat: no-repeat;
+    background-position: 0 0;
+    background-image: conic-gradient(#000,
+            #402fb5 5%,
+            #000 38%,
+            #000 50%,
+            #cf30aa 60%,
+            #000 87%);
+    transition: all 2s;
+}
+
+/* HOVER STATES - Activate animations */
+.premium-card-wrapper:hover .pc-darkBorderBg::before,
+.premium-card-wrapper:hover .pc-glow::before,
+.premium-card-wrapper:hover .pc-white::before,
+.premium-card-wrapper:hover .pc-border::before {
+    opacity: 1;
+}
+
+.premium-card-wrapper:hover .pc-glow {
+    opacity: 0.5;
+}
+
+.premium-card-wrapper:hover .pc-darkBorderBg::before {
+    transform: translate(-50%, -50%) rotate(262deg);
+}
+
+.premium-card-wrapper:hover .pc-glow::before {
+    transform: translate(-50%, -50%) rotate(240deg);
+}
+
+.premium-card-wrapper:hover .pc-white::before {
+    transform: translate(-50%, -50%) rotate(263deg);
+}
+
+.premium-card-wrapper:hover .pc-border::before {
+    transform: translate(-50%, -50%) rotate(250deg);
+}
+
+/* Light Mode Override for better contrast */
+[data-theme="light"] .pc-content {
+    background-color: #ffffff;
+    /* White card in light mode */
+    border: 1px solid #e0e0e0;
+    color: #1a1a1a;
+}
+
+[data-theme="light"] .premium-card-wrapper:hover .pc-content {
+    border-color: transparent;
+    /* Remove border when glow activates */
+}

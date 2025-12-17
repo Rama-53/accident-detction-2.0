@@ -1,6 +1,7 @@
 // src/components/Gallery.jsx
 import { Images } from 'lucide-react';
 import { BACKEND_URL } from '../config';
+import PremiumInput from './PremiumInput';
 import './Gallery.css';
 
 export function Gallery({
@@ -32,18 +33,22 @@ export function Gallery({
                         <option value="all">All Cameras</option>
                         {cameras.map(c => <option key={c} value={c}>{c}</option>)}
                     </select>
-                    <input
-                        type="datetime-local"
-                        value={filterStartTime}
-                        onChange={e => setFilterStartTime(e.target.value)}
-                        className="glass-input filter-date"
-                    />
-                    <input
-                        type="datetime-local"
-                        value={filterEndTime}
-                        onChange={e => setFilterEndTime(e.target.value)}
-                        className="glass-input filter-date"
-                    />
+                    <div style={{ width: '200px' }}>
+                        <PremiumInput
+                            type="datetime-local"
+                            value={filterStartTime}
+                            onChange={e => setFilterStartTime(e.target.value)}
+                            style={{ height: '40px' }}
+                        />
+                    </div>
+                    <div style={{ width: '200px' }}>
+                        <PremiumInput
+                            type="datetime-local"
+                            value={filterEndTime}
+                            onChange={e => setFilterEndTime(e.target.value)}
+                            style={{ height: '40px' }}
+                        />
+                    </div>
                     <button
                         className="btn-secondary btn-reset"
                         onClick={() => {

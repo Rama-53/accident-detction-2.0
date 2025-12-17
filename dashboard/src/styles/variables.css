@@ -60,7 +60,13 @@
 
     --warning-bg: rgba(234, 179, 8, 0.2);
     --warning-text: #fde047;
+    --warning-bg: rgba(234, 179, 8, 0.2);
+    --warning-text: #fde047;
     --warning-border: rgba(234, 179, 8, 0.3);
+
+    /* Animation Colors */
+    --analyze-sweep: rgba(59, 130, 246, 0.8);
+    /* Strong Blue/Cyan */
 }
 
 [data-theme="light"] {
@@ -108,5 +114,10 @@
 
     --warning-bg: rgba(234, 179, 8, 0.1);
     --warning-text: #a16207;
+    --warning-text: #a16207;
     --warning-border: rgba(234, 179, 8, 0.2);
+
+    /* Animation Colors */
+    --analyze-sweep: rgba(99, 102, 241, 0.8);
+    /* Indigo/Violet for Light Mode */
 }
