@@ -28,7 +28,7 @@ export function Dashboard({
 }) {
     return (
         <div className="dashboard-grid animate-enter">
-            <div className="col-main">
+            <div className="live-feed-section">
                 <LiveFeed
                     videoSources={videoSources}
                     selectedVideoSource={selectedVideoSource}
@@ -43,7 +43,17 @@ export function Dashboard({
                     buildFeedUrl={buildFeedUrl}
                     switchDetectorSource={switchDetectorSource}
                 />
+            </div>
 
+            <div className="alerts-section">
+                <AlertsList
+                    events={events}
+                    setActiveEvent={setActiveEvent}
+                    clearAllAlerts={clearAllAlerts}
+                />
+            </div>
+
+            <div className="map-section">
                 <CameraMap
                     selectedVideoSource={selectedVideoSource}
                     selectedSourceInfo={selectedSourceInfo}
@@ -54,14 +64,6 @@ export function Dashboard({
                     showSuggestions={showSuggestions}
                     setShowSuggestions={setShowSuggestions}
                     selectSuggestion={selectSuggestion}
-                />
-            </div>
-
-            <div className="col-side">
-                <AlertsList
-                    events={events}
-                    setActiveEvent={setActiveEvent}
-                    clearAllAlerts={clearAllAlerts}
                 />
             </div>
         </div>

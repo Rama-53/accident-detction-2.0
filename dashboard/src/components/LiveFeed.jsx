@@ -3,6 +3,8 @@ import { Camera } from 'lucide-react';
 import { BACKEND_URL } from '../config';
 import AnalyzeButton from './AnalyzeButton';
 import PremiumInput from './PremiumInput';
+import ScannerOverlay from './ScannerOverlay';
+import AICheckbox from './AICheckbox';
 import './LiveFeed.css';
 
 export function LiveFeed({
@@ -42,9 +44,9 @@ export function LiveFeed({
                     </select>
 
                     {selectedVideoSource && (
-                        <label className="detection-toggle">
-                            <input
-                                type="checkbox"
+                        <div style={{ marginLeft: '10px' }}>
+                            <AICheckbox
+                                label="AI Detection"
                                 checked={selectedSourceInfo.detection_enabled}
                                 onChange={(e) => {
                                     const newState = e.target.checked;
@@ -52,11 +54,7 @@ export function LiveFeed({
                                     saveCameraConfig(selectedVideoSource, { detection_enabled: newState });
                                 }}
                             />
-                            <span className="toggle-track">
-                                <span className="toggle-thumb" />
-                            </span>
-                            <span className="toggle-label">Detection</span>
-                        </label>
+                        </div>
                     )}
                 </div>
             </div>
@@ -91,12 +89,15 @@ export function LiveFeed({
 
             <div className="live-feed-container">
                 {hasValueReady ? (
-                    <img
-                        src={buildFeedUrl(selectedVideoSource)}
-                        alt="Live feed"
-                        className="live-feed-img"
-                        onError={(e) => { e.target.style.opacity = 0; }}
-                    />
+                    <>
+                        <img
+                            src={buildFeedUrl(selectedVideoSource)}
+                            alt="Live feed"
+                            className="live-feed-img"
+                            onError={(e) => { e.target.style.opacity = 0; }}
+                        />
+                        <ScannerOverlay active={selectedSourceInfo?.detection_enabled} />
+                    </>
                 ) : (
                     <div className="live-feed-placeholder">
                         <Camera size={48} />

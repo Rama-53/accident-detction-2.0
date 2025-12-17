@@ -1,0 +1,43 @@
+/* src/components/QuickActions.css */
+.quick-actions-dock {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    padding: 6px;
+    margin-right: 15px;
+}
+
+.qa-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.qa-btn:hover {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.1);
+    border-color: var(--glass-border-hover);
+    box-shadow: 0 0 10px rgba(64, 47, 181, 0.3);
+}
+
+.qa-btn:active {
+    transform: scale(0.95);
+}
+
+.qa-divider {
+    width: 1px;
+    height: 20px;
+    background: var(--glass-border);
+    margin: 0 4px;
+}

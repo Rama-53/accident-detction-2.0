@@ -88,14 +88,14 @@ export function EventModal({ event, onClose }) {
                 </div>
 
                 {/* Map Embed if location available */}
-                {(event.lat || event.location) && (
+                {(event.location_lat || event.location) && (
                     <div className="modal-map">
                         <iframe
                             width="100%"
                             height="200"
                             frameBorder="0"
                             style={{ border: 0, borderRadius: 12, opacity: 0.8 }}
-                            src={`https://www.google.com/maps?q=${event.lat ? `${event.lat},${event.lng}` : encodeURIComponent(event.location)}&z=15&output=embed`}
+                            src={`https://www.google.com/maps?q=${event.location_lat ? `${event.location_lat},${event.location_lng}` : encodeURIComponent(event.location)}&z=15&output=embed`}
                             allowFullScreen
                         ></iframe>
                     </div>

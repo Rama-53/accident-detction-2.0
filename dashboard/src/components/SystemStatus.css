@@ -1,0 +1,125 @@
+/* src/components/SystemStatus.css */
+.system-status-widget {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid var(--glass-border);
+    border-radius: 8px;
+    padding: 6px 12px;
+    font-family: 'Courier New', monospace;
+    font-size: 11px;
+    color: var(--text-dimmed);
+    margin-left: 15px;
+}
+
+.status-item {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    line-height: 1.2;
+}
+
+.status-label {
+    font-size: 9px;
+    text-transform: uppercase;
+    opacity: 0.7;
+}
+
+.status-value {
+    color: var(--primary);
+    font-weight: 700;
+    text-shadow: 0 0 5px rgba(64, 47, 181, 0.4);
+}
+
+.status-divider {
+    width: 1px;
+    height: 20px;
+    background: var(--glass-border);
+}
+
+/* Pulsing Online Dot */
+.sys-online {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--success);
+    font-weight: 700;
+}
+
+.sys-dot {
+    width: 8px;
+    height: 8px;
+    background: var(--success);
+    border-radius: 50%;
+    box-shadow: 0 0 10px var(--success);
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% {
+        transform: scale(0.95);
+        opacity: 0.8;
+        box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.7);
+    }
+
+    70% {
+        transform: scale(1);
+        opacity: 1;
+        box-shadow: 0 0 0 6px rgba(74, 222, 128, 0);
+    }
+
+    100% {
+        transform: scale(0.95);
+        opacity: 0.8;
+        box-shadow: 0 0 0 0 rgba(74, 222, 128, 0);
+    }
+}
+
+/* Mini Activity Bars */
+.activity-bars {
+    display: flex;
+    align-items: flex-end;
+    gap: 2px;
+    height: 16px;
+    width: 24px;
+}
+
+.bar {
+    width: 4px;
+    background: var(--primary);
+    animation: activity 1s ease-in-out infinite alternate;
+}
+
+.bar:nth-child(1) {
+    height: 40%;
+    animation-delay: 0.1s;
+}
+
+.bar:nth-child(2) {
+    height: 70%;
+    animation-delay: 0.3s;
+}
+
+.bar:nth-child(3) {
+    height: 50%;
+    animation-delay: 0.5s;
+}
+
+.bar:nth-child(4) {
+    height: 90%;
+    animation-delay: 0.2s;
+}
+
+@keyframes activity {
+    0% {
+        height: 20%;
+        opacity: 0.5;
+    }
+
+    100% {
+        height: 100%;
+        opacity: 1;
+        filter: drop-shadow(0 0 2px var(--primary));
+    }
+}

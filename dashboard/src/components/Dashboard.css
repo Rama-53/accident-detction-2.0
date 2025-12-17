@@ -2,29 +2,64 @@
 
 .dashboard-grid {
     display: grid;
-    grid-template-columns: 5fr 3fr;
-    gap: 24px;
+    grid-template-columns: 2fr 1fr;
+    grid-template-rows: 1fr 1fr;
+    gap: 20px;
     width: 100%;
+    height: calc(100vh - 100px);
+    /* Adjust based on header height, aiming for fit-to-screen */
     margin: 0;
+    min-height: 800px;
+    padding-bottom: 20px;
+}
+
+/* Section Containers */
+.live-feed-section {
+    grid-column: 1 / 2;
+    grid-row: 1 / -1;
+    /* Spans full height on the left */
+    display: flex;
+    flex-direction: column;
     min-height: 0;
-    /* Important for scroll */
+    /* Important for flex/grid scrolling */
 }
 
-.col-main {
+.alerts-section {
+    grid-column: 2 / 3;
+    grid-row: 1 / 2;
     display: flex;
     flex-direction: column;
-    gap: 24px;
+    min-height: 0;
 }
 
-.col-side {
+.map-section {
+    grid-column: 2 / 3;
+    grid-row: 2 / 3;
     display: flex;
     flex-direction: column;
+    min-height: 0;
+}
+
+/* Ensure components fill their containers */
+.live-feed-section>*,
+.alerts-section>*,
+.map-section>* {
     height: 100%;
-    min-height: 600px;
 }
 
 @media (max-width: 1200px) {
     .dashboard-grid {
         grid-template-columns: 1fr;
+        grid-template-rows: auto;
+        height: auto;
+    }
+
+    .live-feed-section,
+    .alerts-section,
+    .map-section {
+        grid-column: 1 / -1;
+        grid-row: auto;
+        height: 500px;
+        /* specific height for mobile stacking */
     }
 }

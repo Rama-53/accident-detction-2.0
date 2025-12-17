@@ -70,7 +70,13 @@ export function Settings({
                             <input
                                 type="checkbox"
                                 checked={config.multi_detection_enabled}
-                                onChange={e => setConfig({ ...config, multi_detection_enabled: e.target.checked })}
+                                onChange={e => {
+                                    if (e.target.checked) {
+                                        alert("Need More GPU power, Need Server");
+                                        return;
+                                    }
+                                    setConfig({ ...config, multi_detection_enabled: e.target.checked });
+                                }}
                             />
                             <span className="slider round"></span>
                         </label>

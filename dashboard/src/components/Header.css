@@ -1,13 +1,39 @@
 /* src/components/Header.css */
 
 .main-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 24px;
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    margin: 20px 20px 24px 20px;
+    /* Added margin to compensate for removed parent padding */
     gap: 20px;
-    flex-wrap: wrap;
+    background: rgba(0, 0, 0, 0.2);
+    padding: 10px 20px;
+    /* Increased side padding slightly */
+    border-radius: 16px;
+    border: 1px solid var(--glass-border);
 }
+
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    justify-self: start;
+}
+
+.header-right {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    justify-self: end;
+}
+
+/* Target the middle child (SensorWaveform) to center it */
+.main-header>*:nth-child(2) {
+    justify-self: center;
+}
+
+
 
 .header-title h1 {
     font-family: 'Outfit', sans-serif;

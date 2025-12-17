@@ -1,6 +1,8 @@
 // src/components/CameraWall.jsx
 import { Video, LayoutDashboard, Monitor } from 'lucide-react';
+import AICheckbox from './AICheckbox';
 import './CameraWall.css';
+import './WinampSelection.css'; // New Winamp Styles
 
 const MAX_MULTI_FEEDS = 4;
 
@@ -56,17 +58,22 @@ export function CameraWall({
                 </div>
             </div>
 
-            <div className="multi-feed-controls">
-                {videoSources.map(src => {
-                    const checked = multiSourceIds.includes(src.id);
-                    return (
-                        <div key={src.id} className={`multi-feed-option ${checked ? 'selected' : ''}`}>
-                            <label className="camera-checkbox">
-                                <div className={`checkbox-box ${checked ? 'checked' : ''}`}>
-                                    {checked && <span className="checkbox-check" />}
-                                </div>
+            {/* Winamp Camera Selection */}
+            <div className="winamp-player-container">
+                <div className="player-header">
+                    <div className="header-bars"></div>
+                    <span className="header-title">PREFERENCES // AUDIO_MODE</span>
+                </div>
+
+                <div className="radio-stack">
+                    {videoSources.map(src => {
+                        const checked = multiSourceIds.includes(src.id);
+                        return (
+                            <label key={src.id} className="track-select" htmlFor={`track-${src.id}`}>
                                 <input
                                     type="checkbox"
+                                    id={`track-${src.id}`}
+                                    name="camera-select"
                                     checked={checked}
                                     onChange={e => {
                                         if (e.target.checked) {
@@ -78,29 +85,43 @@ export function CameraWall({
                                         }
                                     }}
                                 />
-                                <span className="camera-name">{src.label}</span>
-                            </label>
+                                <div className="led-indicator">
+                                    <div className="led-glass"></div>
+                                    <div className="led-light"></div>
+                                    <div className="led-reflection"></div>
+                                </div>
+                                <div className="track-info">
+                                    <span className="track-title">{src.label}</span>
+                                    <span className="track-kbps">
+                                        {src.id === 'detector_stream' ? 'AI_Active' : 'LIVE_FEED'}
+                                    </span>
+                                </div>
+                                <div className="equalizer-mini">
+                                    <div className="bar"></div>
+                                    <div className="bar"></div>
+                                    <div className="bar"></div>
+                                </div>
 
-                            {src.id !== 'detector_stream' && (
-                                <label className="ai-toggle">
-                                    <div className={`toggle-track ${src.detection_enabled ? 'on' : ''}`}>
-                                        <div className="toggle-thumb" />
+                                {/* AI Toggle Integration */}
+                                {src.id !== 'detector_stream' && (
+                                    <div className="winamp-ai-scale" onClick={e => e.stopPropagation()}>
+                                        <AICheckbox
+                                            label=""
+                                            checked={src.detection_enabled || false}
+                                            onChange={(e) => {
+                                                const val = e.target.checked;
+                                                saveCameraConfig(src.id, { detection_enabled: val });
+                                                setVideoSources(prev => prev.map(s => s.id === src.id ? { ...s, detection_enabled: val } : s));
+                                            }}
+                                        />
                                     </div>
-                                    <input
-                                        type="checkbox"
-                                        checked={src.detection_enabled || false}
-                                        onChange={(e) => {
-                                            const val = e.target.checked;
-                                            saveCameraConfig(src.id, { detection_enabled: val });
-                                            setVideoSources(prev => prev.map(s => s.id === src.id ? { ...s, detection_enabled: val } : s));
-                                        }}
-                                    />
-                                    <span className={`ai-label ${src.detection_enabled ? 'active' : ''}`}>AI</span>
-                                </label>
-                            )}
-                        </div>
-                    );
-                })}
+                                )}
+                            </label>
+                        );
+                    })}
+                </div>
+
+                <div className="screen-overlay"></div>
             </div>
 
             <div className={`wall-grid wall-grid-${layoutMode}`}>
