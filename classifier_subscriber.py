@@ -144,6 +144,16 @@ def main(zmq_host: str, zmq_port: int, mongo_uri: str, db_name: str, out_dir: st
         print(f"[subscriber] WARNING: LPR init failed: {e}")
         lp_model = None
 
+    # --- Messaging Service ---
+    try:
+        from services.messaging_service import MessagingService
+        messaging_svc = MessagingService()
+        print("[subscriber] MessagingService initialized")
+    except Exception as e:
+        print(f"[subscriber] Failed to init MessagingService: {e}")
+        messaging_svc = None
+
+
     classifier = AccidentClassifier()
     if verbose:
         print("[subscriber] classifier initialized (real)")
@@ -228,69 +238,7 @@ def main(zmq_host: str, zmq_port: int, mongo_uri: str, db_name: str, out_dir: st
             # Ideally run this only once per vehicle per accident, but for now run on every frame 
             # that we are about to process. (Optimally, check if already identified).
             
-            if lp_model:
-                for c in crops_meta:
-                    try:
-                        # 1. Load image again (or keep in memory)
-                        # We have c["file"]
-                        # Run LP detection on the VEHICLE crop
-                        
-                        # Note: The vehicle crop might range from small to large.
-                        # Ideally we run on the high-res crop.
-                        
-                        veh_img = cv2.imread(c["file"])
-                        if veh_img is None: continue
-                        
-                        # Ultralytics expects numpy/path
-                        lp_results = lp_model(veh_img, verbose=False)[0]
-                        
-                        detected_plate_text = None
-                        
-                        for box in lp_results.boxes:
-                            # 2. Crop the plate
-                            x1, y1, x2, y2 = box.xyxy[0].cpu().numpy().astype(int)
-                            plate_crop = veh_img[y1:y2, x1:x2]
-                            
-                            if plate_crop.size == 0: continue
 
-                            # 3. OCR
-                            # enhance?
-                            # gray = cv2.cvtColor(plate_crop, cv2.COLOR_BGR2GRAY)
-                            
-                            # easyocr: detail=0 returns list of strings
-                            ocr_res = ocr_reader.readtext(plate_crop, detail=0, allowlist='ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789')
-                            
-                            if ocr_res:
-                                # take the longest string or join? usually just one plate
-                                candidate = "".join(ocr_res).upper().strip()
-                                if len(candidate) > 3: # min length filter
-                                    detected_plate_text = candidate
-                                    break # assume one plate per car crop
-                        
-                        if detected_plate_text:
-                            c["license_plate"] = detected_plate_text
-                            if verbose:
-                                print(f"[subscriber] Detected Plate: {detected_plate_text}")
-                            
-                            # 4. Lookup Contact
-                            # exact match? or partial? let's do exact for now.
-                            match = contacts_df[contacts_df['LicensePlate'] == detected_plate_text]
-                            if not match.empty:
-                                owner = match.iloc[0]['OwnerName']
-                                phone = match.iloc[0]['Phone']
-                                email = match.iloc[0]['Email']
-                                c["contact_info"] = {
-                                    "owner": owner,
-                                    "phone": phone,
-                                    "email": email
-                                }
-                                # Trigger Alert (Simulated)
-                                alert_msg = f"*** ALERT SENT *** Accident detected for {owner} ({detected_plate_text}). Calling {phone}..."
-                                c["alert_status"] = "sent"
-                                if verbose:
-                                    print(alert_msg)
-                    except Exception as e:
-                        print(f"[subscriber] LPR error: {e}")
 
             # --- Alert Logic Start ---
             if camera_id not in camera_states:
@@ -374,6 +322,70 @@ def main(zmq_host: str, zmq_port: int, mongo_uri: str, db_name: str, out_dir: st
                     res = accidents_col.insert_one(doc)
                     if verbose:
                         print(f"[subscriber] INSERTED NEW alert {res.inserted_id} cam={camera_id} crops={len(crops_meta)}")
+
+                    # --- ALERT LOGIC (MOVED HERE) ---
+                    if lp_model:
+                        for c in crops_meta:
+                            try:
+                                veh_img = cv2.imread(c["file"])
+                                if veh_img is None: continue
+                                
+                                lp_results = lp_model(veh_img, verbose=False)[0]
+                                detected_plate_text = None
+                                
+                                for box in lp_results.boxes:
+                                    x1, y1, x2, y2 = box.xyxy[0].cpu().numpy().astype(int)
+                                    plate_crop = veh_img[y1:y2, x1:x2]
+                                    if plate_crop.size == 0: continue
+                                    
+                                    ocr_res = ocr_reader.readtext(plate_crop, detail=0, allowlist='ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789')
+                                    if ocr_res:
+                                        candidate = "".join(ocr_res).upper().strip()
+                                        if len(candidate) > 3:
+                                            detected_plate_text = candidate
+                                            break
+                                
+                                if detected_plate_text:
+                                    c["license_plate"] = detected_plate_text
+                                    if verbose: print(f"[subscriber] Detected Plate: {detected_plate_text}")
+                                    
+                                    match = contacts_df[contacts_df['LicensePlate'] == detected_plate_text]
+                                    if not match.empty:
+                                        owner = match.iloc[0]['OwnerName']
+                                        phone = match.iloc[0]['Phone']
+                                        email = match.iloc[0]['Email']
+                                        c["contact_info"] = {"owner": owner, "phone": phone, "email": email}
+                                        
+                                        alert_msg = f"*** ACCIDENT ALERT ***\nVehicle: {detected_plate_text}\nOwner: {owner}\nLocation: {event.get('location', 'Unknown')}\nTime: {datetime.now()}"
+                                        c["alert_status"] = "sent"
+                                        if messaging_svc:
+                                            messaging_svc.send_alert(c["contact_info"], alert_msg, subject=f"Accident Alert: {detected_plate_text}", attachment_path=c["file"])
+                                            if verbose: print(f"[subscriber] Alert sent to owner: {owner}", flush=True)
+                                    else:
+                                        # Fallback to Admin (Unknown Plate)
+                                        if verbose: print(f"[subscriber] Plate {detected_plate_text} not in contacts. Trying Admin...", flush=True)
+                                        if messaging_svc:
+                                            sys_conf = messaging_svc._get_system_config()
+                                            admin_contact = {"email": sys_conf.get("admin_email"), "phone": sys_conf.get("admin_phone")}
+                                            if admin_contact["email"] or admin_contact["phone"]:
+                                                fallback_msg = f"*** UNREGISTERED VEHICLE ACCIDENT ***\nPlate: {detected_plate_text}\nLocation: {event.get('location', 'Unknown')}\nTime: {datetime.now()}"
+                                                messaging_svc.send_alert(admin_contact, fallback_msg, subject=f"Admin Alert: Unregistered Vehicle {detected_plate_text}", attachment_path=c["file"])
+                                                c["alert_status"] = "sent_admin"
+                                                if verbose: print("[subscriber] Alert sent to ADMIN", flush=True)
+                                else:
+                                    # No Plate Detected -> Admin Fallback
+                                    if verbose: print("[subscriber] No plate detected. Triggering Admin Alert...", flush=True)
+                                    if messaging_svc:
+                                        sys_conf = messaging_svc._get_system_config()
+                                        admin_contact = {"email": sys_conf.get("admin_email"), "phone": sys_conf.get("admin_phone")}
+                                        if admin_contact["email"] or admin_contact["phone"]:
+                                            fallback_msg = f"*** ACCIDENT DETECTED (UNKNOWN VEHICLE) ***\nLocation: {event.get('location', 'Unknown')}\nTime: {datetime.now()}\nNote: LPR failed to identify plate."
+                                            messaging_svc.send_alert(admin_contact, fallback_msg, subject="Admin Alert: Unknown Vehicle Accident", attachment_path=c["file"])
+                                            c["alert_status"] = "sent_admin_noplate"
+                                            if verbose: print("[subscriber] Alert sent to ADMIN (No Plate)", flush=True)
+
+                            except Exception as e:
+                                print(f"[subscriber] LPR error: {e}", flush=True)
                 except Exception as e:
                     print(f"[subscriber] MongoDB insert failed: {e}")
                     traceback.print_exc()

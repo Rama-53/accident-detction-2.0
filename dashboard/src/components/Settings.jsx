@@ -11,15 +11,33 @@ export function Settings({
 }) {
     const [config, setConfig] = useState({
         multi_detection_enabled: multiDetectionEnabled || false,
-        system_name: "Accident Detection System 2.0" // Placeholder
+        email_alerts_enabled: true,
+        whatsapp_alerts_enabled: true,
+        admin_email: "",
+        admin_phone: "",
+        system_name: "Accident Detection System 2.0"
     });
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState(null);
 
     useEffect(() => {
-        // Sync local state if prop changes from outside
-        setConfig(prev => ({ ...prev, multi_detection_enabled: multiDetectionEnabled }));
-    }, [multiDetectionEnabled]);
+        // Fetch full system config on mount
+        const fetchConfig = async () => {
+            try {
+                const res = await fetch(`${BACKEND_URL}/system/config`);
+                if (res.ok) {
+                    const data = await res.json();
+                    setConfig(prev => ({
+                        ...prev,
+                        ...data
+                    }));
+                }
+            } catch (err) {
+                console.error("Failed to load settings:", err);
+            }
+        };
+        fetchConfig();
+    }, []);
 
     const handleSave = async () => {
         setLoading(true);
@@ -29,7 +47,11 @@ export function Settings({
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    multi_detection_enabled: config.multi_detection_enabled
+                    multi_detection_enabled: config.multi_detection_enabled,
+                    email_alerts_enabled: config.email_alerts_enabled,
+                    whatsapp_alerts_enabled: config.whatsapp_alerts_enabled,
+                    admin_email: config.admin_email,
+                    admin_phone: config.admin_phone
                 })
             });
 
@@ -50,78 +72,150 @@ export function Settings({
 
     return (
         <div className="glass-panel settings-panel animate-slide-up">
-            <div className="panel-header">
-                <div className="panel-title">
-                    <Server size={18} />
-                    <span>System Configuration</span>
-                </div>
-            </div>
-
-            <div className="settings-content">
-                {/* Detection Settings */}
-                <div className="settings-section">
-                    <h3><Shield size={16} /> Detection Logic</h3>
-                    <div className="setting-item">
-                        <div className="setting-info">
-                            <label>Multi-Camera Detection Grouping</label>
-                            <p>Enable cross-camera event correlation (experimental)</p>
+            {!config ? (
+                <div style={{ padding: '2rem', textAlign: 'center' }}>Loading settings...</div>
+            ) : (
+                <>
+                    <div className="panel-header">
+                        <div className="panel-title">
+                            <Server size={18} />
+                            <span>System Configuration</span>
                         </div>
-                        <label className="switch">
-                            <input
-                                type="checkbox"
-                                checked={config.multi_detection_enabled}
-                                onChange={e => {
-                                    if (e.target.checked) {
-                                        alert("Need More GPU power, Need Server");
-                                        return;
-                                    }
-                                    setConfig({ ...config, multi_detection_enabled: e.target.checked });
-                                }}
-                            />
-                            <span className="slider round"></span>
-                        </label>
                     </div>
-                </div>
 
-                {/* Database Management */}
-                <div className="settings-section">
-                    <h3><Activity size={16} /> Data Management</h3>
-                    <div className="setting-item">
-                        <div className="setting-info">
-                            <label>Clear Accident History</label>
-                            <p>Permanently remove all logged events and snapshots</p>
+                    <div className="settings-content">
+                        {/* Detection Settings */}
+                        <div className="settings-section">
+                            <h3><Shield size={16} /> Detection Logic</h3>
+                            <div className="setting-item">
+                                <div className="setting-info">
+                                    <label>Multi-Camera Detection Grouping</label>
+                                    <p>Enable cross-camera event correlation (experimental)</p>
+                                </div>
+                                <label className="switch">
+                                    <input
+                                        type="checkbox"
+                                        checked={config.multi_detection_enabled}
+                                        onChange={e => {
+                                            if (e.target.checked) {
+                                                alert("Need More GPU power, Need Server");
+                                                return;
+                                            }
+                                            setConfig({ ...config, multi_detection_enabled: e.target.checked });
+                                        }}
+                                    />
+                                    <span className="slider round"></span>
+                                </label>
+                            </div>
                         </div>
-                        <button
-                            className="btn-danger"
-                            onClick={async () => {
-                                if (confirm("Are you sure you want to delete ALL accident history?")) {
-                                    await clearAllAlerts();
-                                    setMessage({ type: 'success', text: 'Database cleared' });
-                                    setTimeout(() => setMessage(null), 3000);
-                                }
-                            }}
-                        >
-                            <Trash2 size={14} /> Clear Database
-                        </button>
+
+                        {/* Database Management */}
+                        <div className="settings-section">
+                            <h3><Activity size={16} /> Data Management</h3>
+                            <div className="setting-item">
+                                <div className="setting-info">
+                                    <label>Clear Accident History</label>
+                                    <p>Permanently remove all logged events and snapshots</p>
+                                </div>
+                                <button
+                                    className="btn-danger"
+                                    onClick={async () => {
+                                        if (confirm("Are you sure you want to delete ALL accident history?")) {
+                                            await clearAllAlerts();
+                                            setMessage({ type: 'success', text: 'Database cleared' });
+                                            setTimeout(() => setMessage(null), 3000);
+                                        }
+                                    }}
+                                >
+                                    <Trash2 size={14} /> Clear Database
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Notification Settings */}
+                        <div className="settings-section">
+                            <h3><Activity size={16} /> Notifications</h3>
+                            <div className="setting-item">
+                                <div className="setting-info">
+                                    <label>Email Alerts</label>
+                                    <p>Send accident reports via Email (SMTP)</p>
+                                </div>
+                                <label className="switch">
+                                    <input
+                                        type="checkbox"
+                                        checked={config.email_alerts_enabled ?? true}
+                                        onChange={e => setConfig({ ...config, email_alerts_enabled: e.target.checked })}
+                                    />
+                                    <span className="slider round"></span>
+                                </label>
+                            </div>
+                            <div className="setting-item">
+                                <div className="setting-info">
+                                    <label>WhatsApp Alerts</label>
+                                    <p>Send instant alerts via WhatsApp Cloud API</p>
+                                </div>
+                                <label className="switch">
+                                    <input
+                                        type="checkbox"
+                                        checked={config.whatsapp_alerts_enabled ?? true}
+                                        onChange={e => setConfig({ ...config, whatsapp_alerts_enabled: e.target.checked })}
+                                    />
+                                    <span className="slider round"></span>
+                                </label>
+                            </div>
+                        </div>
+
+                        {/* Admin Contacts */}
+                        <div className="settings-section">
+                            <h3><Shield size={16} /> Admin Fallback</h3>
+                            <div className="setting-item">
+                                <div className="setting-info">
+                                    <label>Admin Email</label>
+                                    <p>Receive alerts if vehicle owner is unknown</p>
+                                </div>
+                                <input
+                                    type="email"
+                                    className="premium-input-field"
+                                    placeholder="admin@example.com"
+                                    value={config.admin_email || ""}
+                                    onChange={e => setConfig({ ...config, admin_email: e.target.value })}
+                                    style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', padding: '8px', borderRadius: '4px' }}
+                                />
+                            </div>
+                            <div className="setting-item">
+                                <div className="setting-info">
+                                    <label>Admin Phone</label>
+                                    <p>WhatsApp number (started with country code)</p>
+                                </div>
+                                <input
+                                    type="text"
+                                    className="premium-input-field"
+                                    placeholder="15551234567"
+                                    value={config.admin_phone || ""}
+                                    onChange={e => setConfig({ ...config, admin_phone: e.target.value })}
+                                    style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', padding: '8px', borderRadius: '4px' }}
+                                />
+                            </div>
+                        </div>
+
+                        {/* Footer Actions */}
+                        <div className="settings-actions">
+                            {message && (
+                                <div className={`settings-msg ${message.type}`}>
+                                    {message.text}
+                                </div>
+                            )}
+                            <button
+                                className="btn-primary"
+                                onClick={handleSave}
+                                disabled={loading}
+                            >
+                                {loading ? 'Saving...' : <><Save size={16} /> Save Changes</>}
+                            </button>
+                        </div>
                     </div>
-                </div>
-
-                {/* Footer Actions */}
-                <div className="settings-actions">
-                    {message && (
-                        <div className={`settings-msg ${message.type}`}>
-                            {message.text}
-                        </div>
-                    )}
-                    <button
-                        className="btn-primary"
-                        onClick={handleSave}
-                        disabled={loading}
-                    >
-                        {loading ? 'Saving...' : <><Save size={16} /> Save Changes</>}
-                    </button>
-                </div>
-            </div>
+                </>
+            )}
         </div>
     );
 }

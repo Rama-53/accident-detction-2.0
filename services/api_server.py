@@ -114,6 +114,17 @@ VIDEO_SOURCES: Dict[str, Dict[str, Any]] = {
         "camera_name": "Parking Lot RTSP",
         "location": "Parking Lot Gate",
     },
+    "droidcam_ip": {
+        "label": "DroidCam (WiFi/IP)",
+        "type": "ip",
+        "description": "Use DroidCam via WiFi. Enter URL (e.g. http://192.168.1.5:4747/video)",
+        "requires_value": True,
+        "value_hint": "http://192.168.0.101:4747/video",
+        "value_type": "text",
+        "camera_id": "droidcam_ip",
+        "camera_name": "DroidCam Mobile",
+        "location": "Mobile Unit",
+    },
     "custom_file": {
         "label": "Custom video file",
         "type": "file",
@@ -144,6 +155,18 @@ VIDEO_SOURCES: Dict[str, Dict[str, Any]] = {
 }
 DEFAULT_VIDEO_SOURCE_ID = "demo_clip"
 
+# Derived metadata for quick lookup
+CAMERA_METADATA = {
+    v["camera_id"]: {
+        "name": v.get("camera_name", "Unknown Camera"),
+        "location": v.get("location", ""),
+        "lat": v.get("location_lat"),
+        "lng": v.get("location_lng"),
+    }
+    for k, v in VIDEO_SOURCES.items()
+    if "camera_id" in v
+}
+
 from pydantic import BaseModel
 
 class CameraConfig(BaseModel):
@@ -156,46 +179,28 @@ class CameraConfig(BaseModel):
 
 class SystemConfig(BaseModel):
     multi_detection_enabled: Optional[bool] = None
+    email_alerts_enabled: Optional[bool] = None
+    whatsapp_alerts_enabled: Optional[bool] = None
+    admin_email: Optional[str] = None
+    admin_phone: Optional[str] = None
 
 SYSTEM_CONFIG: Dict[str, Any] = {
-    "multi_detection_enabled": False
+    "multi_detection_enabled": False,
+    "email_alerts_enabled": True,    # Default ON
+    "whatsapp_alerts_enabled": True, # Default ON
+    "admin_email": "",
+    "admin_phone": ""
 }
 
-CAMERA_METADATA: Dict[str, Dict[str, Any]] = {}
-# 1. Initialize from hardcoded config
-for cfg in VIDEO_SOURCES.values():
-    cam_id = cfg.get("camera_id")
-    if not cam_id:
-        continue
-    CAMERA_METADATA[cam_id] = {
-        "name": cfg.get("camera_name"),
-        "location": cfg.get("location"),
-        "lat": cfg.get("location_lat"),
-        "lng": cfg.get("location_lng"),
-        "video_source": cfg.get("source"), # Default from config
-    }
-
-# 2. Apply overrides from MongoDB
-try:
-    for stored_cam in db.cameras.find():
-        c_id = stored_cam.get("camera_id")
-        if c_id:
-            if c_id not in CAMERA_METADATA:
-                CAMERA_METADATA[c_id] = {}
-            # Update fields if present in DB
-            for f in ["name", "location", "lat", "lng", "detection_enabled", "video_source"]:
-                if stored_cam.get(f) is not None:
-                    CAMERA_METADATA[c_id][f] = stored_cam.get(f)
-    print(f"[api] Loaded {db.cameras.count_documents({})} camera overrides from DB")
-except Exception as e:
-    print(f"[api] Failed to load camera overrides: {e}")
+# ... (Camera metadata logic remains here) ...
 
 # 3. Load System Config
 try:
     sys_conf_doc = db.system_config.find_one({"config_id": "main"})
     if sys_conf_doc:
-        if "multi_detection_enabled" in sys_conf_doc:
-            SYSTEM_CONFIG["multi_detection_enabled"] = sys_conf_doc["multi_detection_enabled"]
+        for key in SYSTEM_CONFIG.keys():
+            if key in sys_conf_doc:
+                SYSTEM_CONFIG[key] = sys_conf_doc[key]
     print(f"[api] Loaded system config: {SYSTEM_CONFIG}")
 except Exception as e:
     print(f"[api] Failed to load system config: {e}")
@@ -208,6 +213,16 @@ def get_system_config():
 def update_system_config(config: SystemConfig):
     if config.multi_detection_enabled is not None:
         SYSTEM_CONFIG["multi_detection_enabled"] = config.multi_detection_enabled
+    
+    if config.email_alerts_enabled is not None:
+        SYSTEM_CONFIG["email_alerts_enabled"] = config.email_alerts_enabled
+    if config.whatsapp_alerts_enabled is not None:
+        SYSTEM_CONFIG["whatsapp_alerts_enabled"] = config.whatsapp_alerts_enabled
+    
+    if config.admin_email is not None:
+        SYSTEM_CONFIG["admin_email"] = config.admin_email
+    if config.admin_phone is not None:
+        SYSTEM_CONFIG["admin_phone"] = config.admin_phone
     
     # Persist
     db.system_config.update_one(

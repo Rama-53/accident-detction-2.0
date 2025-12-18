@@ -5,7 +5,7 @@ echo Starting Accident Detection System...
 start "Backend API" cmd /k "call .venv\Scripts\activate && uvicorn services.api_server:app --reload --port 8000"
 
 :: 2. Subscriber
-start "Subscriber" cmd /k "call .venv\Scripts\activate && python classifier_subscriber.py"
+start "EMAIL & ALERTS LOG" cmd /k "color 0A && call .venv\Scripts\activate && python classifier_subscriber.py"
 
 :: 3. Detector (Default Camera)
 start "Detector" cmd /k "call .venv\Scripts\activate && python detector_publisher.py --video cctv_eg.mp4"

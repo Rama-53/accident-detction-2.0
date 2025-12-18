@@ -194,7 +194,7 @@ export function useCameraControl() {
     }, [updateCameraMetaValue, saveCameraConfig]);
 
     const switchDetectorSource = useCallback(async (sourceId, actualSource, onComplete) => {
-        if (!actualSource) return;
+        if (actualSource === undefined || actualSource === null || actualSource === '') return;
         setSelectedVideoSource('');
         const DELAY = 2500;
 

@@ -213,12 +213,17 @@ def main(
             if sys.platform == "win32":
                 print(f"[publisher] Attempting to open source {s} with CAP_DSHOW...")
                 c = cv2.VideoCapture(s, cv2.CAP_DSHOW)
+                # Give it a moment to initialize
+                time.sleep(0.5)
                 if not c.isOpened():
-                    print(f"[publisher] CAP_DSHOW failed for {s}. Falling back to default (MSMF)...")
+                    print(f"[publisher] CAP_DSHOW failed for {s}. Waiting 1s before fallback...")
+                    c.release()
+                    time.sleep(1.0)
+                    print(f"[publisher] Falling back to default (MSMF) for {s}...")
                     c = cv2.VideoCapture(s)
             else:
                 c = cv2.VideoCapture(s)
-        except:
+        except ValueError:
             # Not an integer -> likely a file path or URL
             s = src_val
             c = cv2.VideoCapture(s)

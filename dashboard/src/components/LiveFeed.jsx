@@ -76,7 +76,7 @@ export function LiveFeed({
                     <AnalyzeButton
                         onClick={() => {
                             const actualSource = currentVideoSource?.requires_value ? currentValue : currentVideoSource?.source;
-                            if (!actualSource) {
+                            if (actualSource === undefined || actualSource === null || actualSource === '') {
                                 alert('Invalid source');
                                 return;
                             }
