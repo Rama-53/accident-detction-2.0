@@ -30,10 +30,13 @@ from typing import Optional, List, Dict, Any, Generator
 
 import cv2
 from bson.objectid import ObjectId
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, FileResponse, StreamingResponse
 from pymongo import MongoClient
+import shutil
+import os
+import uuid
 
 app = FastAPI()
 
@@ -45,6 +48,26 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Ensure upload directory exists
+UPLOAD_DIR = os.path.join(os.getcwd(), "temp_uploads")
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+
+@app.post("/upload_video")
+async def upload_video(file: UploadFile = File(...)):
+    try:
+        # Generate unique filename
+        file_ext = os.path.splitext(file.filename)[1]
+        unique_name = f"{uuid.uuid4()}{file_ext}"
+        file_path = os.path.join(UPLOAD_DIR, unique_name)
+        
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+            
+        return {"path": file_path, "filename": file.filename}
+    except Exception as e:
+        print(f"Upload failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
 
 MONGO_URI = "mongodb://127.0.0.1:27017"
 DB_NAME = "accident_db"
