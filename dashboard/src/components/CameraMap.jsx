@@ -73,6 +73,15 @@ export function CameraMap({
                         </ul>
                     )}
                 </div>
+                <div style={{ marginTop: '15px' }}>
+                    <PremiumInput
+                        type="text"
+                        placeholder="Sector ID (e.g. North)"
+                        value={selectedSourceInfo.sector_id || ""}
+                        onChange={e => updateCameraMetaValue(selectedVideoSource, 'sector_id', e.target.value)}
+                        onBlur={() => saveCameraConfig(selectedVideoSource)}
+                    />
+                </div>
             </div>
 
             <div className="map-container">

@@ -31,6 +31,7 @@ export function useCameraControl() {
                                 name: src.camera_name || '',
                                 location: src.location || '',
                                 detection_enabled: src.detection_enabled,
+                                sector_id: src.sector_id || '',
                             };
                         }
                     });
@@ -83,6 +84,7 @@ export function useCameraControl() {
             lat: overrides.lat ?? meta.location_lat ?? null,
             lng: overrides.lng ?? meta.location_lng ?? null,
             detection_enabled: overrides.detection_enabled ?? meta.detection_enabled ?? false,
+            sector_id: overrides.sector_id !== undefined ? overrides.sector_id : (meta.sector_id || ''),
         };
     }, [getSourceMeta, cameraMetaValues]);
 
@@ -116,6 +118,7 @@ export function useCameraControl() {
             lat: overrides.lat !== undefined ? overrides.lat : meta.lat,
             lng: overrides.lng !== undefined ? overrides.lng : meta.lng,
             detection_enabled: overrides.detection_enabled !== undefined ? overrides.detection_enabled : (meta.detection_enabled ?? true),
+            sector_id: meta.sector_id,
         };
 
         try {
@@ -210,11 +213,23 @@ export function useCameraControl() {
 
         setTimeout(async () => {
             try {
+                // 1. Update the DETECTOR to use this new source
                 await fetch(`${BACKEND_URL}/cameras/demo_cam_main`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(updatePayload)
                 });
+
+                // 2. ALSO update the ORIGINATING camera config with its own video source path
+                // This ensures the backend DB has the link between 'sourceId' and 'actualSource',
+                // allowing detector_publisher to identify which camera is active.
+                if (sourceId && sourceId !== 'demo_cam_main') {
+                    await fetch(`${BACKEND_URL}/cameras/${sourceId}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ video_source: String(actualSource) })
+                    });
+                }
                 setSelectedVideoSource('detector_stream');
                 if (onComplete) onComplete();
             } catch (err) {

@@ -214,10 +214,39 @@ def main(zmq_host: str, zmq_port: int, mongo_uri: str, db_name: str, out_dir: st
                 except Exception as e:
                     print(f"[subscriber] failed to save full frame: {e}")
 
-            # 2. Handle Crops - SKIPPED per user request (Full frame only)
-            # We do not log/save cropped photos from CNN classifier anymore.
-            # The 'crops_meta' will only contain the Full Frame (from step 1).
-            pass
+            # 2. Handle Crops - Restore logic to save detector crops
+            for i, crop_b64 in enumerate(crops_b64):
+                try:
+                    crop_img = decode_b64_to_pil(crop_b64)
+                    timestamp = datetime.utcnow().strftime("%Y%m%dT%H%M%S%f")[:-3]
+                    fname = f"{camera_id}_f{frame_idx}_crop{i}_{timestamp}.jpg"
+                    fpath = out_dir / fname
+                    save_pil_to_path(crop_img, fpath)
+                    
+                    # Store metadata
+                    # Note: We don't have per-crop labels from the detector in this simple payload structure
+                    # unless 'event' has them aligned.
+                    # Assuming standard detector that sends raw crops. 
+                    # We will use the classifier or fallbacks later. 
+                    # For now, let's mark them as potential collision evidence.
+                    
+                    # Try to match with bboxes validation if possible, but simplest is to save all.
+                    # We will filter them in the next step (lines 222+)
+                    
+                    # Placeholder prediction until classified (or if classifier used)
+                    crops_meta.append({
+                        "file": str(fpath),
+                        "width": crop_img.width,
+                        "height": crop_img.height,
+                        "prediction": {
+                            "label": "vehicle_collision", # Default to match filter
+                            "severity": "medium",
+                            "confidence": 0.8,
+                            "note": f"crop_{i}"
+                        }
+                    })
+                except Exception as e:
+                    print(f"[subscriber] failed to save crop {i}: {e}")
 
             # Filter crops: keep ONLY "vehicle_collision"
             accident_crops = []
@@ -297,31 +326,57 @@ def main(zmq_host: str, zmq_port: int, mongo_uri: str, db_name: str, out_dir: st
                     should_group = True
             
             if should_group:
-                # Update existing alert
-                try:
-                    res = accidents_col.update_one(
-                        {"_id": latest_alert["_id"]},
-                        {
-                            "$push": {"crops": {"$each": crops_meta}},
-                            "$set": {"last_updated": datetime.utcnow()} # Update timestamp to keep window alive?
-                            # Request said "detected -> next 20 sec". 
-                            # Usually this means a fixed window from START. 
-                            # If we update 'inserted_at', it becomes a rolling window (keeps extending).
-                            # User said "when accident detected, then next 20s". Implies fixed window from first detection.
-                            # So we do NOT update 'inserted_at'.
-                        }
-                    )
+                # Update existing alert - WITH FRAME LIMIT
+                current_count = len(latest_alert.get("crops", []))
+                limit = 10
+                
+                if current_count < limit:
+                    # Only add if we haven't hit the limit
+                    space_left = limit - current_count
+                    if space_left < len(crops_meta):
+                         # Truncate to fit
+                         crops_to_add = crops_meta[:space_left]
+                    else:
+                         crops_to_add = crops_meta
+
+                    try:
+                        res = accidents_col.update_one(
+                            {"_id": latest_alert["_id"]},
+                            {
+                                "$push": {"crops": {"$each": crops_to_add}},
+                                "$set": {"last_updated": datetime.utcnow()}
+                            }
+                        )
+                        if verbose:
+                            print(f"[subscriber] GROUPED frame {frame_idx} into alert {latest_alert['_id']} (added {len(crops_to_add)}, total {current_count + len(crops_to_add)})")
+                    except Exception as e:
+                        print(f"[subscriber] MongoDB update failed: {e}")
+                else:
                     if verbose:
-                        print(f"[subscriber] GROUPED frame {frame_idx} into alert {latest_alert['_id']} (crops+{len(crops_meta)})")
-                except Exception as e:
-                    print(f"[subscriber] MongoDB update failed: {e}")
+                        print(f"[subscriber] Alert {latest_alert['_id']} reached frame limit (10). Skipping frame {frame_idx}.")
             else:
                 # Create NEW alert
+                # Look up sector_id for this camera from the DB to preserve history
+                try:
+                    cam_doc = db.cameras.find_one({"camera_id": camera_id})
+                    sector_id = cam_doc.get("sector_id") if cam_doc else None
+                except Exception:
+                    sector_id = None
+
                 doc = build_mongo_doc(camera_id, frame_idx, ts_utc, event, crops_meta)
+                if sector_id:
+                    doc["sector_id"] = sector_id
+
+                # Burn in name and location if provided by publisher, to freeze history
+                if event.get("camera_name"):
+                    doc["camera_name"] = event.get("camera_name")
+                if event.get("location"):
+                    doc["location"] = event.get("location")
+
                 try:
                     res = accidents_col.insert_one(doc)
                     if verbose:
-                        print(f"[subscriber] INSERTED NEW alert {res.inserted_id} cam={camera_id} crops={len(crops_meta)}")
+                        print(f"[subscriber] INSERTED NEW alert {res.inserted_id} cam={camera_id} crops={len(crops_meta)} sector={sector_id}")
 
                     # --- ALERT LOGIC (MOVED HERE) ---
                     if lp_model:

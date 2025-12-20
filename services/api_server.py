@@ -30,13 +30,10 @@ from typing import Optional, List, Dict, Any, Generator
 
 import cv2
 from bson.objectid import ObjectId
-from fastapi import FastAPI, HTTPException, UploadFile, File
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, FileResponse, StreamingResponse
 from pymongo import MongoClient
-import shutil
-import os
-import uuid
 
 app = FastAPI()
 
@@ -48,26 +45,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# Ensure upload directory exists
-UPLOAD_DIR = os.path.join(os.getcwd(), "temp_uploads")
-os.makedirs(UPLOAD_DIR, exist_ok=True)
-
-@app.post("/upload_video")
-async def upload_video(file: UploadFile = File(...)):
-    try:
-        # Generate unique filename
-        file_ext = os.path.splitext(file.filename)[1]
-        unique_name = f"{uuid.uuid4()}{file_ext}"
-        file_path = os.path.join(UPLOAD_DIR, unique_name)
-        
-        with open(file_path, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
-            
-        return {"path": file_path, "filename": file.filename}
-    except Exception as e:
-        print(f"Upload failed: {e}")
-        raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
 
 MONGO_URI = "mongodb://127.0.0.1:27017"
 DB_NAME = "accident_db"
@@ -190,6 +167,53 @@ CAMERA_METADATA = {
     if "camera_id" in v
 }
 
+# Hydrate CAMERA_METADATA from MongoDB on startup
+try:
+    print("[api] Hydrating camera config from DB...")
+    for cam_doc in db.cameras.find():
+        cid = cam_doc.get("camera_id")
+        if not cid:
+            continue
+            
+        if cid not in CAMERA_METADATA:
+            CAMERA_METADATA[cid] = {}
+
+        # Merge fields
+        if "name" in cam_doc:
+            CAMERA_METADATA[cid]["name"] = cam_doc["name"]
+        if "location" in cam_doc:
+            CAMERA_METADATA[cid]["location"] = cam_doc["location"]
+        if "lat" in cam_doc:
+            CAMERA_METADATA[cid]["lat"] = cam_doc["lat"]
+        if "lng" in cam_doc:
+            CAMERA_METADATA[cid]["lng"] = cam_doc["lng"]
+        if "detection_enabled" in cam_doc:
+            CAMERA_METADATA[cid]["detection_enabled"] = cam_doc["detection_enabled"]
+        if "sector_id" in cam_doc:
+            CAMERA_METADATA[cid]["sector_id"] = cam_doc["sector_id"]
+        if "video_source" in cam_doc:
+            CAMERA_METADATA[cid]["video_source"] = cam_doc["video_source"]
+
+    # SEED MISSING VIDEO SOURCES TO DB
+    # This allows detector_publisher to find 'webcam_0' by looking up source "0" in the DB.
+    for key, cfg in VIDEO_SOURCES.items():
+        cid = cfg.get("camera_id")
+        def_source = cfg.get("source")
+        if cid and def_source is not None:
+             # Check if DB has it
+             stored = db.cameras.find_one({"camera_id": cid})
+             if not stored or "video_source" not in stored:
+                 db.cameras.update_one(
+                     {"camera_id": cid},
+                     {"$set": {"video_source": str(def_source)}},
+                     upsert=True
+                 )
+                 print(f"[api] Seeded video_source for {cid}")
+
+    print(f"[api] Hydrated metadata for {len(CAMERA_METADATA)} cameras.")
+except Exception as e:
+    print(f"[api] Failed to hydrate camera config: {e}")
+
 from pydantic import BaseModel
 
 class CameraConfig(BaseModel):
@@ -199,6 +223,7 @@ class CameraConfig(BaseModel):
     lng: Optional[float] = None
     detection_enabled: Optional[bool] = None
     video_source: Optional[str] = None
+    sector_id: Optional[str] = None
 
 class SystemConfig(BaseModel):
     multi_detection_enabled: Optional[bool] = None
@@ -284,6 +309,9 @@ def update_camera_config(camera_id: str, config: CameraConfig):
     if config.video_source is not None:
         CAMERA_METADATA[camera_id]["video_source"] = config.video_source
         update_data["video_source"] = config.video_source
+    if config.sector_id is not None:
+        CAMERA_METADATA[camera_id]["sector_id"] = config.sector_id
+        update_data["sector_id"] = config.sector_id
 
     # 2. Persist to MongoDB
     if update_data:
@@ -390,6 +418,13 @@ def _doc_to_event(doc: Dict[str, Any]) -> Dict[str, Any]:
         if location_lat is None or location_lng is None:
             location_lat = camera_meta.get("lat", location_lat)
             location_lng = camera_meta.get("lng", location_lng)
+    
+    sector_id = ""
+    # Prefer stored sector_id (historic truth), fallback to current config
+    if doc.get("sector_id"):
+        sector_id = doc.get("sector_id")
+    elif camera_meta:
+        sector_id = camera_meta.get("sector_id") or ""
 
     # If we have at least one crop, attach snapshot metadata so the
     # dashboard can render a thumbnail next to the alert.
@@ -408,9 +443,19 @@ def _doc_to_event(doc: Dict[str, Any]) -> Dict[str, Any]:
         "location": location,
         "location_lat": location_lat,
         "location_lng": location_lng,
+        "sector_id": sector_id,
         "snapshot_id": snapshot_id,
         "snapshot_path": snapshot_path,
         "snapshot_count": len(crops),
+        "snapshots": [
+            {
+                "idx": i,
+                "label": c.get("prediction", {}).get("label", "unknown"),
+                "severity": c.get("prediction", {}).get("severity", "unknown"),
+                "file": c.get("file")
+            }
+            for i, c in enumerate(crops)
+        ]
     }
 
 
@@ -638,7 +683,26 @@ def video_sources():
 
         # Overlay dynamic metadata if available
         if cam_id and cam_id in CAMERA_METADATA:
-            meta = CAMERA_METADATA[cam_id]
+            # Skip overlay if it is the detector stream (user request)
+            # But we still want to show the stream in the list!
+            if cam_id == "detector_stream":
+                pass
+            else:
+                meta = CAMERA_METADATA[cam_id]
+                if meta.get("name"):
+                    cam_name = meta.get("name")
+                if meta.get("location"):
+                    loc = meta.get("location")
+                if meta.get("lat") is not None:
+                    lat = meta.get("lat")
+                if meta.get("lng") is not None:
+                    lng = meta.get("lng")
+                if meta.get("sector_id"):
+                    sector_id = meta.get("sector_id")
+                if meta.get("video_source"):
+                    # For listing, we might want to show the underlying source?
+                    # But the frontend uses source_id.
+                    pass
             if meta.get("name"):
                 cam_name = meta.get("name")
             if meta.get("location"):
@@ -647,6 +711,10 @@ def video_sources():
                 lat = meta.get("lat")
             if meta.get("lng") is not None:
                 lng = meta.get("lng")
+            if meta.get("sector_id"):
+                sector_id = meta.get("sector_id")
+            else:
+                sector_id = None
 
         options.append(
             {
@@ -664,6 +732,7 @@ def video_sources():
                 "location_lat": lat,
                 "location_lng": lng,
                 "detection_enabled": CAMERA_METADATA.get(cam_id, {}).get("detection_enabled", False) if cam_id else False,
+                "sector_id": CAMERA_METADATA.get(cam_id, {}).get("sector_id", ""),
                 "video_source": cfg.get("source"), # Default from config
                 "source": cfg.get("source") # Explicitly expose source for frontend logic
             }

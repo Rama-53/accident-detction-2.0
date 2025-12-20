@@ -1,7 +1,8 @@
 // src/components/Settings.jsx
 import { useState, useEffect } from 'react';
-import { Save, Trash2, Server, Shield, Activity } from 'lucide-react';
+import { Save, Trash2, Server, Shield, Activity, Users } from 'lucide-react';
 import { BACKEND_URL } from '../config';
+import { ResponderManager } from './ResponderManager';
 import './Settings.css';
 
 export function Settings({
@@ -196,6 +197,12 @@ export function Settings({
                                     style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', padding: '8px', borderRadius: '4px' }}
                                 />
                             </div>
+                        </div>
+
+                        {/* --- NEW: Responder Management --- */}
+                        <div className="settings-section">
+                            <h3><Users size={16} /> Emergency Response</h3>
+                            <ResponderManager />
                         </div>
 
                         {/* Footer Actions */}

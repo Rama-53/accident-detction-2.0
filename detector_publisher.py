@@ -97,11 +97,12 @@ class MJPEGHandler(BaseHTTPRequestHandler):
 
 def start_mjpeg_server(port=5001):
     try:
+        print(f"[publisher] Starting MJPEG server on port {port}...", flush=True)
         server = ThreadingHTTPServer(('0.0.0.0', port), MJPEGHandler)
-        print(f"[publisher] MJPEG stream available at http://localhost:{port}/stream.mjpg")
+        print(f"[publisher] MJPEG stream available at http://localhost:{port}/stream.mjpg", flush=True)
         server.serve_forever()
     except Exception as e:
-        print(f"[publisher] Failed to start MJPEG server: {e}")
+        print(f"[publisher] Failed to start MJPEG server: {e}", flush=True)
 
 def main(
     video_source: str, 
@@ -131,8 +132,14 @@ def main(
         "detection_enabled": False,
         "video_source": video_source,
         "location": location_name,
+        "video_source": video_source,
+        "location": location_name,
         "name": None
     }
+    
+    # Track the active camera identity (may change if source points to another config)
+    current_camera_id = camera_id
+    current_identity_meta = {}
 
     def poll_config_updates():
         """
@@ -267,7 +274,45 @@ def main(
                 time.sleep(1.0) # Safety delay for Windows camera release
                 cap = open_capture(new_source_val)
                 current_source_val = new_source_val
-                frame_idx = 0 
+                
+                # Check if this source belongs to another known camera configuration and adopt its identity
+                try:
+                    # We need a fresh client here or reuse the one from poll_thread if accessible?
+                    # Simplest to just create a short-lived client or use a shared one if we refactored.
+                    # Since this happens rarely (on switch), a new client is fine.
+                    m_client = MongoClient("mongodb://127.0.0.1:27017")
+                    m_db = m_client["accident_db"]
+                    
+                    # Find a camera config that uses this str(source) AND is NOT the default controller itself (to avoid self-loop if logic is weird)
+                    # Note: The "video_source" in DB might be the path.
+                    matched_cam = m_db.cameras.find_one({"video_source": str(new_source_val)})
+                    
+                    if matched_cam and matched_cam.get("camera_id"):
+                        new_id = matched_cam.get("camera_id")
+                        # Only switch if it's different and NOT the default controller (unless we are swapping roles)
+                        if new_id != current_camera_id:
+                            print(f"[publisher] Dynamic Identity Switch: {current_camera_id} -> {new_id}")
+                            current_camera_id = new_id
+                            # Load metadata for the new identity
+                            with config_lock:
+                                current_identity_meta["name"] = matched_cam.get("name")
+                                current_identity_meta["location"] = matched_cam.get("location")
+                                current_identity_meta["sector_id"] = matched_cam.get("sector_id")
+                    else:
+                        # Fallback to original if no match found
+                        if current_camera_id != camera_id:
+                             print(f"[publisher] Identity Revert: {current_camera_id} -> {camera_id}")
+                             current_camera_id = camera_id
+                             # Revert metadata triggers logic to use current_config (polled)
+                             with config_lock:
+                                 current_identity_meta.clear()
+
+                except Exception as e:
+                    print(f"[publisher] Identity lookup failed: {e}")
+
+                frame_idx = 0
+
+
             
             if cap is None or not cap.isOpened():
                 # Visualize error on the stream so user knows it failed
@@ -358,14 +403,27 @@ def main(
             if ok:
                 with latest_frame_lock:
                     latest_frame_jpeg = buf.tobytes()
+            else:
+                print(f"[publisher] Failed to encode frame {frame_idx}")
+            
+            if frame_idx % 30 == 0:
+                print(f"[publisher] Processed frame {frame_idx}, cam_id={current_camera_id}")
 
             # attach metadata
             # attach metadata (thread-safe read)
+            # attach metadata (thread-safe read)
             with config_lock:
-                current_loc = current_config.get("location")
-                current_name = current_config.get("name")
+                if current_identity_meta:
+                    # We are masquerading as another camera, use its loaded static meta
+                    # Note: We don't poll updates for the masqueraded camera, but that's acceptable for now.
+                    current_loc = current_identity_meta.get("location")
+                    current_name = current_identity_meta.get("name")
+                else:
+                    # Use the polled config of the main detector
+                    current_loc = current_config.get("location")
+                    current_name = current_config.get("name")
             
-            event["camera_id"] = camera_id
+            event["camera_id"] = current_camera_id
             if current_name:
                 event["camera_name"] = current_name
             if current_loc:
