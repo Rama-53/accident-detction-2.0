@@ -62,7 +62,7 @@ except Exception as e:
 # Default video source for the /video_feed endpoint.
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 VIDEO_SOURCES: Dict[str, Dict[str, Any]] = {
-    "demo_clip": {
+    "demo_cam_main": {
         "label": "Demo clip (cctv_eg.mp4)",
         "type": "file",
         "description": "Sample CCTV clip bundled with the repo",
@@ -70,10 +70,11 @@ VIDEO_SOURCES: Dict[str, Dict[str, Any]] = {
         "requires_value": False,
         "camera_id": "demo_cam_main",
         "camera_name": "Demo Intersection",
-        "location": "Demo City - Main & 5th",
+        "location": "Main St & 1st Ave",
         "location_lat": 37.3353,
         "location_lng": -121.8893,
     },
+    # ... (other sources)
     "detector_stream": {
         "label": "Detector Stream (with BBoxes)",
         "type": "ip",
@@ -154,7 +155,7 @@ VIDEO_SOURCES: Dict[str, Dict[str, Any]] = {
         "camera_id": "custom_webcam",
     },
 }
-DEFAULT_VIDEO_SOURCE_ID = "demo_clip"
+DEFAULT_VIDEO_SOURCE_ID = "demo_cam_main"
 
 # Derived metadata for quick lookup
 CAMERA_METADATA = {
@@ -196,20 +197,44 @@ try:
             CAMERA_METADATA[cid]["video_source"] = cam_doc["video_source"]
 
     # SEED MISSING VIDEO SOURCES TO DB
-    # This allows detector_publisher to find 'webcam_0' by looking up source "0" in the DB.
+    # This allows detector_publisher to find 'webcam_0' or 'custom_file' by looking up source in the DB.
     for key, cfg in VIDEO_SOURCES.items():
         cid = cfg.get("camera_id")
-        def_source = cfg.get("source")
-        if cid and def_source is not None:
-             # Check if DB has it
-             stored = db.cameras.find_one({"camera_id": cid})
-             if not stored or "video_source" not in stored:
-                 db.cameras.update_one(
-                     {"camera_id": cid},
-                     {"$set": {"video_source": str(def_source)}},
-                     upsert=True
-                 )
-                 print(f"[api] Seeded video_source for {cid}")
+        
+        # Determine the source to seed. 
+        # For custom_file/custom_rtsp, the 'source' key might be missing in VIDEO_SOURCES config (it's dynamic),
+        # so we don't force-seed a value if it's None, UNLESS we want to create the doc.
+        # We SHOULD create the doc so detector_publisher can find it later (after frontend updates it).
+        
+        stored = db.cameras.find_one({"camera_id": cid})
+        
+        update_fields = {}
+        if not stored:
+            # New camera, seed all available metadata
+            update_fields["camera_id"] = cid
+            if cfg.get("camera_name"): update_fields["name"] = cfg.get("camera_name")
+            if cfg.get("location"): update_fields["location"] = cfg.get("location")
+            # For custom_file, we might not have a source yet, but create the doc anyway
+            if cfg.get("source"): update_fields["video_source"] = str(cfg.get("source"))
+            
+            # Seed sector_id if missing (random placeholder or from config)
+            if cfg.get("sector_id"): 
+                update_fields["sector_id"] = cfg.get("sector_id")
+            else:
+                 # Default sector for new cams
+                update_fields["sector_id"] = "SEC-GEN-01"
+
+            db.cameras.insert_one(update_fields)
+            print(f"[api] Seeded new camera doc for {cid}")
+
+        else:
+            # Existing doc, check if video_source is missing and we have a default
+            if "video_source" not in stored and cfg.get("source"):
+                db.cameras.update_one(
+                    {"camera_id": cid},
+                    {"$set": {"video_source": str(cfg["source"])}}
+                )
+                print(f"[api] Seeded video_source for {cid}")
 
     print(f"[api] Hydrated metadata for {len(CAMERA_METADATA)} cameras.")
 except Exception as e:
@@ -379,7 +404,11 @@ def _doc_to_event(doc: Dict[str, Any]) -> Dict[str, Any]:
     # Prefer detector_ts (when the frame was processed), fall back to inserted_at
     ts = doc.get("detector_ts") or doc.get("inserted_at")
     try:
+        from datetime import timezone
         # If it is a datetime, convert to UNIX seconds
+        # Ensure it's treated as UTC if naive
+        if hasattr(ts, 'replace') and ts.tzinfo is None:
+            ts = ts.replace(tzinfo=timezone.utc)
         time_val = ts.timestamp()  # type: ignore[attr-defined]
     except Exception:
         time_val = None

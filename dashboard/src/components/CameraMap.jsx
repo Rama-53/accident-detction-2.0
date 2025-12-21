@@ -1,10 +1,10 @@
-// src/components/CameraMap.jsx
-import { MapPin } from 'lucide-react';
+import { MapPin, Save, Loader } from 'lucide-react';
 import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import PremiumInput from './PremiumInput';
 import './CameraMap.css';
+import { useState } from 'react';
 
 // Fix for default marker icon in React Leaflet
 delete L.Icon.Default.prototype._getIconUrl;
@@ -35,6 +35,14 @@ export function CameraMap({
     setShowSuggestions,
     selectSuggestion,
 }) {
+    const [isSaving, setIsSaving] = useState(false);
+
+    const handleSave = async () => {
+        setIsSaving(true);
+        await saveCameraConfig(selectedVideoSource);
+        setTimeout(() => setIsSaving(false), 800);
+    };
+
     return (
         <div className="glass-panel camera-map-panel">
             <div className="panel-header">
@@ -42,6 +50,27 @@ export function CameraMap({
                     <MapPin size={18} />
                     <span>Camera Location</span>
                 </div>
+                <button
+                    className="btn-save"
+                    onClick={handleSave}
+                    disabled={isSaving}
+                    style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        padding: '6px 12px',
+                        fontSize: '0.85rem',
+                        background: 'var(--primary-gradient)',
+                        border: 'none',
+                        borderRadius: '6px',
+                        color: 'white',
+                        cursor: isSaving ? 'wait' : 'pointer',
+                        opacity: isSaving ? 0.8 : 1
+                    }}
+                >
+                    {isSaving ? <Loader size={14} className="spin" /> : <Save size={14} />}
+                    {isSaving ? 'Saving...' : 'Save'}
+                </button>
             </div>
 
             <div className="camera-config-inputs">
@@ -50,7 +79,7 @@ export function CameraMap({
                         placeholder="Camera Name"
                         value={selectedSourceInfo.name}
                         onChange={e => updateCameraMetaValue(selectedVideoSource, 'name', e.target.value)}
-                        onBlur={() => saveCameraConfig(selectedVideoSource)}
+                    // Removed onBlur autosave
                     />
                 </div>
                 <div className="location-input-wrapper">
@@ -60,7 +89,7 @@ export function CameraMap({
                         onChange={e => handleLocationChange(selectedVideoSource, e.target.value)}
                         onBlur={() => {
                             setTimeout(() => setShowSuggestions(false), 200);
-                            saveCameraConfig(selectedVideoSource);
+                            // Removed autosave
                         }}
                     />
                     {showSuggestions && locationSuggestions.length > 0 && (
@@ -79,7 +108,7 @@ export function CameraMap({
                         placeholder="Sector ID (e.g. North)"
                         value={selectedSourceInfo.sector_id || ""}
                         onChange={e => updateCameraMetaValue(selectedVideoSource, 'sector_id', e.target.value)}
-                        onBlur={() => saveCameraConfig(selectedVideoSource)}
+                    // Removed onBlur autosave
                     />
                 </div>
             </div>
@@ -100,7 +129,7 @@ export function CameraMap({
                         onLocationSelect={(lat, lng) => {
                             updateCameraMetaValue(selectedVideoSource, 'lat', lat);
                             updateCameraMetaValue(selectedVideoSource, 'lng', lng);
-                            setTimeout(() => saveCameraConfig(selectedVideoSource), 100);
+                            // Removed timeout autosave
                         }}
                     />
                 </MapContainer>

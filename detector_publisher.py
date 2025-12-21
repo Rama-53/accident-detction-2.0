@@ -282,14 +282,17 @@ def main(
                     # Since this happens rarely (on switch), a new client is fine.
                     m_client = MongoClient("mongodb://127.0.0.1:27017")
                     m_db = m_client["accident_db"]
-                    
-                    # Find a camera config that uses this str(source) AND is NOT the default controller itself (to avoid self-loop if logic is weird)
-                    # Note: The "video_source" in DB might be the path.
-                    matched_cam = m_db.cameras.find_one({"video_source": str(new_source_val)})
+                    search_query = {
+                        "video_source": str(new_source_val),
+                        "camera_id": {"$ne": camera_id}  # Exclude the physical executor (demo_cam_main)
+                    }
+                    print(f"[publisher] SEARCHING IDENTITY: {search_query}")
+                    matched_cam = m_db.cameras.find_one(search_query)
+                    print(f"[publisher] FOUND IDENTITY: {matched_cam}")
                     
                     if matched_cam and matched_cam.get("camera_id"):
                         new_id = matched_cam.get("camera_id")
-                        # Only switch if it's different and NOT the default controller (unless we are swapping roles)
+                        # Only switch if it's different and NOT the current controller itself
                         if new_id != current_camera_id:
                             print(f"[publisher] Dynamic Identity Switch: {current_camera_id} -> {new_id}")
                             current_camera_id = new_id
@@ -301,6 +304,7 @@ def main(
                     else:
                         # Fallback to original if no match found
                         if current_camera_id != camera_id:
+                             print(f"[publisher] Identity Revert: {current_camera_id} -> {camera_id}")
                              print(f"[publisher] Identity Revert: {current_camera_id} -> {camera_id}")
                              current_camera_id = camera_id
                              # Revert metadata triggers logic to use current_config (polled)

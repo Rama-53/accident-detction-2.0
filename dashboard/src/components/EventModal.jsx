@@ -134,7 +134,7 @@ export function EventModal({ event, onClose }) {
                                 <div className="info-icon"><Video size={16} /></div>
                                 <div className="info-content">
                                     <label>Camera Source</label>
-                                    <span>{event.camera_id?.replace(/_/g, ' ') || 'Unknown'}</span>
+                                    <span>{event.camera_name || event.camera_id?.replace(/_/g, ' ') || 'Unknown'}</span>
                                 </div>
                             </div>
                             <div className="info-item">

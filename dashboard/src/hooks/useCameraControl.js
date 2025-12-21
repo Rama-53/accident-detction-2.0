@@ -206,23 +206,16 @@ export function useCameraControl() {
 
         const updatePayload = {
             video_source: String(actualSource),
-            name: currentInfo.name,
-            location: currentInfo.location,
+            // name: currentInfo.name,          <-- REMOVED: Do not overwrite detector's physical name
+            // location: currentInfo.location,  <-- REMOVED: Do not overwrite detector's physical location
             detection_enabled: currentInfo.detection_enabled
         };
 
         setTimeout(async () => {
             try {
-                // 1. Update the DETECTOR to use this new source
-                await fetch(`${BACKEND_URL}/cameras/demo_cam_main`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(updatePayload)
-                });
-
-                // 2. ALSO update the ORIGINATING camera config with its own video source path
-                // This ensures the backend DB has the link between 'sourceId' and 'actualSource',
-                // allowing detector_publisher to identify which camera is active.
+                // 1. FIRST update the ORIGINATING camera config with its own video source path
+                // This ensures the DB has the link between 'sourceId' and 'actualSource'
+                // BEFORE the detector tries to look it up.
                 if (sourceId && sourceId !== 'demo_cam_main') {
                     await fetch(`${BACKEND_URL}/cameras/${sourceId}`, {
                         method: 'POST',
@@ -230,6 +223,13 @@ export function useCameraControl() {
                         body: JSON.stringify({ video_source: String(actualSource) })
                     });
                 }
+
+                // 2. THEN update the DETECTOR to use this new source
+                await fetch(`${BACKEND_URL}/cameras/demo_cam_main`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(updatePayload)
+                });
                 setSelectedVideoSource('detector_stream');
                 if (onComplete) onComplete();
             } catch (err) {

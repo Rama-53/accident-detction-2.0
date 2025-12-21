@@ -215,7 +215,7 @@ class AccidentDetector:
         self.frame_idx += 1
 
         # Run YOLO
-        results = self.model(frame, verbose=False, device=0)[0]
+        results = self.model(frame, verbose=False)[0]
         norfair_dets, boxes = self._yolo_to_boxes_and_dets(results)
 
         # Update Norfair tracker
