@@ -5,6 +5,7 @@ import AnalyzeButton from './AnalyzeButton';
 import PremiumInput from './PremiumInput';
 import ScannerOverlay from './ScannerOverlay';
 import AICheckbox from './AICheckbox';
+import FileUploader from './FileUploader';
 import './LiveFeed.css';
 
 export function LiveFeed({
@@ -59,9 +60,21 @@ export function LiveFeed({
                 </div>
             </div>
 
+
+
             {/* Source Input Area */}
             {selectedVideoSource && currentVideoSource?.requires_value && (
                 <div className="source-input-area" style={{ marginBottom: '1rem' }}>
+
+                    {/* NEW: File Uploader for custom file types */}
+                    {(currentVideoSource.id === 'custom_file' || currentVideoSource.type === 'file') && (
+                        <FileUploader
+                            onFileSelected={(path) => {
+                                setVideoSourceValues(p => ({ ...p, [selectedVideoSource]: path }));
+                            }}
+                        />
+                    )}
+
                     <PremiumInput
                         type={currentVideoSource.value_type === 'number' ? 'number' : 'text'}
                         placeholder={currentVideoSource.value_hint || 'Enter path/URL'}

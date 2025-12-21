@@ -26,11 +26,12 @@ contains a "crops" list with entries like:
 We translate those into lightweight event objects the React dashboard expects.
 """
 from pathlib import Path
+import shutil
 from typing import Optional, List, Dict, Any, Generator
 
 import cv2
 from bson.objectid import ObjectId
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, FileResponse, StreamingResponse
 from pymongo import MongoClient
@@ -614,6 +615,35 @@ def _video_frame_generator(source: str) -> Generator[bytes, None, None]:
         print(f"[api] Stream error: {e}")
     finally:
         cap.release()
+
+
+
+@app.post("/upload")
+async def upload_file(file: UploadFile = File(...)):
+    """
+    Handle file uploads from the dashboard (e.g. for custom video files).
+    Saves the file to 'temp_uploads' and returns the absolute path.
+    """
+    import os
+    try:
+        upload_dir = PROJECT_ROOT / "temp_uploads"
+        upload_dir.mkdir(parents=True, exist_ok=True)
+        
+        # We might want to sanitize the filename or ensure uniqueness, 
+        # but for now, simple overwrite is okay for this local tool.
+        file_path = upload_dir / file.filename
+        
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+            
+        print(f"[api] Uploaded file to {file_path}")
+        return {
+            "path": str(file_path.absolute()), 
+            "filename": file.filename
+        }
+    except Exception as e:
+        print(f"[api] Upload failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.get("/video_feed")

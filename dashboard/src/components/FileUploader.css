@@ -1,0 +1,85 @@
+.file-uploader {
+    border: 2px dashed rgba(255, 255, 255, 0.2);
+    border-radius: 8px;
+    padding: 1.5rem;
+    text-align: center;
+    transition: all 0.3s ease;
+    background: rgba(0, 0, 0, 0.2);
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    margin-bottom: 1rem;
+}
+
+.file-uploader:hover,
+.file-uploader.drag-active {
+    border-color: var(--accent-color, #00fff2);
+    background: rgba(0, 255, 242, 0.05);
+    box-shadow: 0 0 15px rgba(0, 255, 242, 0.1);
+}
+
+.file-uploader input {
+    display: none;
+}
+
+.upload-icon {
+    font-size: 2rem;
+    color: rgba(255, 255, 255, 0.6);
+    margin-bottom: 0.5rem;
+    transition: color 0.3s;
+}
+
+.file-uploader:hover .upload-icon {
+    color: var(--accent-color, #00fff2);
+}
+
+.upload-text {
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.upload-text strong {
+    color: white;
+    margin-left: 4px;
+}
+
+.upload-progress {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    height: 4px;
+    background: var(--accent-color, #00fff2);
+    transition: width 0.3s;
+    box-shadow: 0 -2px 10px rgba(0, 255, 242, 0.5);
+}
+
+.upload-success {
+    color: #4ade80;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.upload-error {
+    color: #ef4444;
+}
+
+.animate-pulse {
+    animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+    0% {
+        opacity: 0.6;
+    }
+
+    50% {
+        opacity: 1;
+    }
+
+    100% {
+        opacity: 0.6;
+    }
+}
