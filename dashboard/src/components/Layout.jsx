@@ -3,32 +3,12 @@ import { Sidebar } from './Sidebar';
 import { Header } from './Header';
 import './Layout.css';
 
-export function Layout({
-    children,
-    activeTab,
-    setActiveTab,
-    theme,
-    toggleTheme,
-    status,
-    cameras,
-    selectedCamera,
-    setSelectedCamera
-}) {
+export function Layout({ children }) {
     return (
         <div className="app-layout">
-            <Sidebar
-                activeTab={activeTab}
-                setActiveTab={setActiveTab}
-                theme={theme}
-                toggleTheme={toggleTheme}
-            />
+            <Sidebar />
             <main className="main-content-area">
-                <Header
-                    status={status}
-                    cameras={cameras}
-                    selectedCamera={selectedCamera}
-                    setSelectedCamera={setSelectedCamera}
-                />
+                <Header />
                 <div className="content-scroll-area">
                     {children}
                 </div>

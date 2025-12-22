@@ -2,9 +2,12 @@
 import { Bell } from 'lucide-react';
 import { BACKEND_URL } from '../config';
 import PremiumCard from './PremiumCard';
+import { useSystem } from '../context/SystemContext';
 import './AlertsList.css';
 
-export function AlertsList({ events, setActiveEvent, clearAllAlerts }) {
+export function AlertsList() {
+    const { events, setActiveEvent, clearAllAlerts } = useSystem();
+
     return (
         <div className="glass-panel alerts-panel">
             <div className="panel-header">

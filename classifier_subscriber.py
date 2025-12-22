@@ -17,7 +17,7 @@ import json
 import os
 from pathlib import Path
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 import traceback
 
 import zmq
@@ -91,8 +91,8 @@ def build_mongo_doc(camera_id, frame_idx, detector_ts, event, crops_meta):
     doc = {
         "camera_id": camera_id,
         "frame_idx": frame_idx,
-        "detector_ts": datetime.utcfromtimestamp(detector_ts) if isinstance(detector_ts, (int, float)) else detector_ts,
-        "inserted_at": datetime.utcnow(),
+        "detector_ts": datetime.fromtimestamp(detector_ts, timezone.utc).replace(tzinfo=None) if isinstance(detector_ts, (int, float)) else detector_ts,
+        "inserted_at": datetime.now(timezone.utc).replace(tzinfo=None),
         "crashes": event.get("crashes", []),
         "bbox_count": len(event.get("bboxes", [])),
         "crop_count": len(crops_meta),
@@ -194,7 +194,7 @@ def main(zmq_host: str, zmq_port: int, mongo_uri: str, db_name: str, out_dir: st
             if full_frame_b64:
                 try:
                     ff_img = decode_b64_to_pil(full_frame_b64)
-                    timestamp = datetime.utcnow().strftime("%Y%m%dT%H%M%S%f")[:-3]
+                    timestamp = datetime.now(timezone.utc).replace(tzinfo=None).strftime("%Y%m%dT%H%M%S%f")[:-3]
                     fname = f"{camera_id}_f{frame_idx}_FULL_{timestamp}.jpg"
                     fpath = out_dir / fname
                     save_pil_to_path(ff_img, fpath)
@@ -218,7 +218,7 @@ def main(zmq_host: str, zmq_port: int, mongo_uri: str, db_name: str, out_dir: st
             for i, crop_b64 in enumerate(crops_b64):
                 try:
                     crop_img = decode_b64_to_pil(crop_b64)
-                    timestamp = datetime.utcnow().strftime("%Y%m%dT%H%M%S%f")[:-3]
+                    timestamp = datetime.now(timezone.utc).replace(tzinfo=None).strftime("%Y%m%dT%H%M%S%f")[:-3]
                     fname = f"{camera_id}_f{frame_idx}_crop{i}_{timestamp}.jpg"
                     fpath = out_dir / fname
                     save_pil_to_path(crop_img, fpath)
@@ -321,7 +321,7 @@ def main(zmq_host: str, zmq_port: int, mongo_uri: str, db_name: str, out_dir: st
             
             should_group = False
             if latest_alert:
-                delta = (datetime.utcnow() - latest_alert["inserted_at"]).total_seconds()
+                delta = (datetime.now(timezone.utc).replace(tzinfo=None) - latest_alert["inserted_at"]).total_seconds()
                 if delta < 10.0:
                     should_group = True
             
@@ -344,7 +344,7 @@ def main(zmq_host: str, zmq_port: int, mongo_uri: str, db_name: str, out_dir: st
                             {"_id": latest_alert["_id"]},
                             {
                                 "$push": {"crops": {"$each": crops_to_add}},
-                                "$set": {"last_updated": datetime.utcnow()}
+                                "$set": {"last_updated": datetime.now(timezone.utc).replace(tzinfo=None)}
                             }
                         )
                         if verbose:

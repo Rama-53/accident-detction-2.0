@@ -1,22 +1,25 @@
 // src/components/CameraWall.jsx
 import { Video, LayoutDashboard, Monitor } from 'lucide-react';
 import AICheckbox from './AICheckbox';
+import { useSystem } from '../context/SystemContext';
 import './CameraWall.css';
 import './WinampSelection.css'; // New Winamp Styles
 
 const MAX_MULTI_FEEDS = 4;
 
-export function CameraWall({
-    videoSources,
-    multiSourceIds,
-    setMultiSourceIds,
-    layoutMode,
-    setLayoutMode,
-    buildFeedUrl,
-    getSourceMeta,
-    saveCameraConfig,
-    setVideoSources,
-}) {
+export function CameraWall() {
+    const {
+        videoSources,
+        multiSourceIds,
+        setMultiSourceIds,
+        layoutMode,
+        setLayoutMode,
+        buildFeedUrl,
+        getSourceMeta,
+        saveCameraConfig,
+        setVideoSources,
+    } = useSystem();
+
     return (
         <div className="glass-panel camera-wall-panel animate-slide-up">
             <div className="panel-header">

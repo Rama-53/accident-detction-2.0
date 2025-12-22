@@ -6,22 +6,25 @@ import PremiumInput from './PremiumInput';
 import ScannerOverlay from './ScannerOverlay';
 import AICheckbox from './AICheckbox';
 import FileUploader from './FileUploader';
+import { useSystem } from '../context/SystemContext';
 import './LiveFeed.css';
 
-export function LiveFeed({
-    videoSources,
-    selectedVideoSource,
-    setSelectedVideoSource,
-    selectedSourceInfo,
-    updateCameraMetaValue,
-    saveCameraConfig,
-    currentVideoSource,
-    currentValue,
-    setVideoSourceValues,
-    hasValueReady,
-    buildFeedUrl,
-    switchDetectorSource,
-}) {
+export function LiveFeed() {
+    const {
+        videoSources,
+        selectedVideoSource,
+        setSelectedVideoSource,
+        selectedSourceInfo,
+        updateCameraMetaValue,
+        saveCameraConfig,
+        currentVideoSource,
+        currentValue,
+        setVideoSourceValues,
+        hasValueReady,
+        buildFeedUrl,
+        switchDetectorSource,
+    } = useSystem();
+
     return (
         <div className="glass-panel live-feed-panel">
             <div className="panel-header">

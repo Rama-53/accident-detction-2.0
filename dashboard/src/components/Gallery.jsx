@@ -2,18 +2,21 @@
 import { Images } from 'lucide-react';
 import { BACKEND_URL } from '../config';
 import PremiumInput from './PremiumInput';
+import { useSystem } from '../context/SystemContext';
 import './Gallery.css';
 
-export function Gallery({
-    events,
-    cameras,
-    selectedCamera,
-    setSelectedCamera,
-    filterStartTime,
-    setFilterStartTime,
-    filterEndTime,
-    setFilterEndTime,
-}) {
+export function Gallery() {
+    const {
+        events,
+        cameras,
+        selectedCamera,
+        setSelectedCamera,
+        filterStartTime,
+        setFilterStartTime,
+        filterEndTime,
+        setFilterEndTime,
+    } = useSystem();
+
     const filteredEvents = events.filter(e => e.snapshot_id);
 
     return (

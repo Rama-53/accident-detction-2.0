@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { X, ExternalLink, Maximize2, ChevronLeft, ChevronRight, Shield, MapPin, Video, Calendar, Clock } from 'lucide-react';
+import { BACKEND_URL } from '../config';
 import './EventModal.css';
 
 export function EventModal({ event, onClose }) {
@@ -8,12 +9,12 @@ export function EventModal({ event, onClose }) {
 
     // Combine main snapshot and crops into a gallery
     const galleryItems = [
-        { type: 'main', url: `http://localhost:8000/snapshot/${event.id}?crop_idx=0` },
+        { type: 'main', url: `${BACKEND_URL}/snapshot/${event.id}?crop_idx=0` },
         ...(event.snapshots || [])
             .filter(snap => snap.idx > 0) // Skip index 0 as it's the main image
             .map(snap => ({
                 type: 'crop',
-                url: `http://localhost:8000/snapshot/${event.id}?crop_idx=${snap.idx}`,
+                url: `${BACKEND_URL}/snapshot/${event.id}?crop_idx=${snap.idx}`,
                 label: snap.label
             }))
     ];

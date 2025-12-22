@@ -2,19 +2,22 @@
 import { AlertTriangle, MapPin } from 'lucide-react';
 import { BACKEND_URL } from '../config';
 import PremiumInput from './PremiumInput';
+import { useSystem } from '../context/SystemContext';
 import './AlertsPage.css';
 
-export function AlertsPage({
-    events,
-    cameras,
-    selectedCamera,
-    setSelectedCamera,
-    filterStartTime,
-    setFilterStartTime,
-    filterEndTime,
-    setFilterEndTime,
-    setActiveEvent
-}) {
+export function AlertsPage() {
+    const {
+        events,
+        cameras,
+        selectedCamera,
+        setSelectedCamera,
+        filterStartTime,
+        setFilterStartTime,
+        filterEndTime,
+        setFilterEndTime,
+        setActiveEvent
+    } = useSystem();
+
     return (
         <div className="glass-panel alerts-page-panel animate-slide-up">
             <div className="panel-header">

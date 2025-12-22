@@ -3,13 +3,16 @@ import { useState, useEffect } from 'react';
 import { Save, Trash2, Server, Shield, Activity, Users } from 'lucide-react';
 import { BACKEND_URL } from '../config';
 import { ResponderManager } from './ResponderManager';
+import { useSystem } from '../context/SystemContext';
 import './Settings.css';
 
-export function Settings({
-    multiDetectionEnabled,
-    setMultiDetectionEnabled,
-    clearAllAlerts
-}) {
+export function Settings() {
+    const {
+        multiDetectionEnabled,
+        setMultiDetectionEnabled,
+        clearAllAlerts
+    } = useSystem();
+
     const [config, setConfig] = useState({
         multi_detection_enabled: multiDetectionEnabled || false,
         email_alerts_enabled: true,

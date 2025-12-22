@@ -3,6 +3,7 @@ import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import PremiumInput from './PremiumInput';
+import { useSystem } from '../context/SystemContext';
 import './CameraMap.css';
 import { useState } from 'react';
 
@@ -24,17 +25,19 @@ function LocationMarker({ lat, lng, onLocationSelect }) {
     return lat && lng ? <Marker position={[lat, lng]} /> : null;
 }
 
-export function CameraMap({
-    selectedVideoSource,
-    selectedSourceInfo,
-    updateCameraMetaValue,
-    saveCameraConfig,
-    handleLocationChange,
-    locationSuggestions,
-    showSuggestions,
-    setShowSuggestions,
-    selectSuggestion,
-}) {
+export function CameraMap() {
+    const {
+        selectedVideoSource,
+        selectedSourceInfo,
+        updateCameraMetaValue,
+        saveCameraConfig,
+        handleLocationChange,
+        locationSuggestions,
+        showSuggestions,
+        setShowSuggestions,
+        selectSuggestion,
+    } = useSystem();
+
     const [isSaving, setIsSaving] = useState(false);
 
     const handleSave = async () => {

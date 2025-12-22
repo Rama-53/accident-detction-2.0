@@ -19,14 +19,39 @@ class MessagingService:
         self.db = None
         self._last_sent = {} # Key: recipient, Value: timestamp
         self._connect_db()
+        self.check_smtp_connection()
 
     def _connect_db(self):
         try:
-            self.mongo_client = MongoClient(self.mongo_uri)
+            self.mongo_client = MongoClient(self.mongo_uri, serverSelectionTimeoutMS=2000)
             self.db = self.mongo_client[self.db_name]
+            # Trigger connection
+            self.mongo_client.admin.command('ping')
             print(f"[MessagingService] Connected to MongoDB: {self.db_name}", flush=True)
         except Exception as e:
             print(f"[MessagingService] Failed to connect to MongoDB: {e}", flush=True)
+
+    def check_smtp_connection(self):
+        """Test connectivity to SMTP server on init."""
+        base_creds = self._load_credentials()
+        server = base_creds.get("smtp_server", "smtp.gmail.com")
+        port = base_creds.get("smtp_port", 587)
+        
+        print(f"[MessagingService] Checking SMTP connection to {server}:{port}...", flush=True)
+        try:
+            # Try connecting with a short timeout
+            s = smtplib.SMTP(server, port, timeout=5)
+            s.starttls()
+            s.quit()
+            print(f"[MessagingService] SMTP Connection SUCCESS.", flush=True)
+            return True
+        except Exception as e:
+            print(f"[MessagingService] CRITICAL WARNING: SMTP Connection FAILED. Email alerts will NOT work.", flush=True)
+            print(f"   -> Error: {e}", flush=True)
+            if "WinError 10060" in str(e) or "timed out" in str(e):
+                print("   -> CAUSE: Network firewall or Antivirus is likely blocking port 587/465.", flush=True)
+                print("   -> TIP: Try disabling your firewall or connecting to a non-restricted network (e.g. mobile hotspot).", flush=True)
+            return False
 
     def _get_system_config(self):
         """Fetch current system config from DB to check toggles and admin credentials."""

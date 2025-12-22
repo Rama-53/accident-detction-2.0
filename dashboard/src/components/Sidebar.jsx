@@ -9,6 +9,7 @@ import {
     Sun,
     Moon
 } from 'lucide-react';
+import { useSystem } from '../context/SystemContext';
 import './Sidebar.css';
 
 const navItems = [
@@ -19,7 +20,9 @@ const navItems = [
     { id: 'settings', label: 'Settings', icon: Settings },
 ];
 
-export function Sidebar({ activeTab, setActiveTab, theme, toggleTheme }) {
+export function Sidebar() {
+    const { activeTab, setActiveTab, theme, toggleTheme } = useSystem();
+
     return (
         <aside className="sidebar">
             <div className="brand">
