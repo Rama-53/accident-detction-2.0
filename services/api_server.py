@@ -350,6 +350,136 @@ def update_camera_config(camera_id: str, config: CameraConfig):
     return {"status": "updated", "camera_id": camera_id, "current_config": CAMERA_METADATA[camera_id]}
 
 
+class Responder(BaseModel):
+    name: str
+    role: str # police, ambulance, fire, admin
+    sector_id: str
+    email: str
+    phone: Optional[str] = None
+
+@app.get("/responders")
+def get_responders():
+    docs = list(db.responders.find())
+    results = []
+    for d in docs:
+        d["_id"] = str(d["_id"])
+        results.append(d)
+    return results
+
+@app.post("/responders")
+def create_responder(responder: Responder):
+    data = responder.dict()
+    res = db.responders.insert_one(data)
+    data["_id"] = str(res.inserted_id)
+    return data
+
+@app.delete("/responders/{responder_id}")
+def delete_responder(responder_id: str):
+    try:
+        oid = ObjectId(responder_id)
+        res = db.responders.delete_one({"_id": oid})
+        return {"deleted_count": res.deleted_count}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.get("/responders/export")
+def export_responders():
+    """
+    Export all responders to an Excel file.
+    """
+    import pandas as pd
+    import io
+
+    try:
+        docs = list(db.responders.find())
+        # Drop _id for cleaner Excel
+        for d in docs:
+            d.pop("_id", None)
+        
+        df = pd.DataFrame(docs)
+        if df.empty:
+            # Create a template if empty
+            df = pd.DataFrame(columns=["name", "role", "sector_id", "email", "phone"])
+
+        # Reorder columns for usability
+        cols = ["name", "role", "sector_id", "email", "phone"]
+        # Add any extra columns that might exist in data
+        existing_cols = [c for c in cols if c in df.columns] + [c for c in df.columns if c not in cols]
+        df = df[existing_cols]
+
+        output = io.BytesIO()
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+            df.to_excel(writer, index=False, sheet_name='Responders')
+        
+        output.seek(0)
+        
+        headers = {
+            'Content-Disposition': 'attachment; filename="responders.xlsx"'
+        }
+        return StreamingResponse(output, headers=headers, media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+
+    except Exception as e:
+        print(f"[api] Export failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/responders/import")
+async def import_responders(file: UploadFile = File(...)):
+    """
+    Import responders from an Excel file.
+    Replaces existing responders or Merges? 
+    Let's simple APPEND for now, or Upsert based on Email?
+    User asked to "Update", implies bulk edit.
+    Simplest 'Bulk Edit' logic: Wipe and Replace, or Smart Upsert.
+    Wipe and Replace is risky if user made mistake.
+    Let's do: Iterate and Insert if new, Update if exists (match by email/phone?).
+    Actually, simpler: Just add them. User can manage duplicates.
+    Or: Wipe `db.responders` and load fresh from Excel (Sync mode).
+    "Store info in Excel so it is easy to do operation" -> implies Excel is the master.
+    So, WIPE and LOAD is the most intuitive "Sync" behavior.
+    """
+    import pandas as pd
+    import io
+    
+    try:
+        contents = await file.read()
+        df = pd.read_excel(io.BytesIO(contents))
+        
+        # Validation
+        required = ["name", "role", "sector_id", "email"]
+        missing = [c for c in required if c not in df.columns]
+        if missing:
+            raise HTTPException(status_code=400, detail=f"Missing columns: {missing}")
+
+        # Convert to records
+        records = df.to_dict(orient='records')
+        
+        # Clean NaN values
+        cleaned_records = []
+        for r in records:
+            clean_r = {}
+            for k, v in r.items():
+                if pd.notna(v):
+                    clean_r[k] = str(v) if k in ['phone', 'sector_id'] else v # Ensure phone is string
+            cleaned_records.append(clean_r)
+
+        if not cleaned_records:
+             return {"status": "skipped", "message": "No valid data found"}
+
+        # EXECUTE SYNC (Wipe and Replace)
+        # This aligns with "manage in Excel" philosophy.
+        db.responders.delete_many({})
+        if cleaned_records:
+            db.responders.insert_many(cleaned_records)
+
+        return {"status": "success", "count": len(cleaned_records)}
+
+    except Exception as e:
+        print(f"[api] Import failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Import failed: {str(e)}")
+
+
 @app.get("/health")
 def health() -> Dict[str, str]:
     return {"status": "ok"}

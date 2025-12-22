@@ -416,28 +416,61 @@ def main(zmq_host: str, zmq_port: int, mongo_uri: str, db_name: str, out_dir: st
                                         if messaging_svc:
                                             messaging_svc.send_alert(c["contact_info"], alert_msg, subject=f"Accident Alert: {detected_plate_text}", attachment_path=c["file"])
                                             if verbose: print(f"[subscriber] Alert sent to owner: {owner}", flush=True)
-                                    else:
-                                        # Fallback to Admin (Unknown Plate)
-                                        if verbose: print(f"[subscriber] Plate {detected_plate_text} not in contacts. Trying Admin...", flush=True)
-                                        if messaging_svc:
+                                    if messaging_svc:
+                                            messaging_svc.send_alert(c["contact_info"], alert_msg, subject=f"Accident Alert: {detected_plate_text}", attachment_path=c["file"])
+                                            if verbose: print(f"[subscriber] Alert sent to owner: {owner}", flush=True)
+                                    
+                                    # Also notify Sector Responders
+                                    if sector_id and messaging_svc:
+                                        responders = list(db.responders.find({"sector_id": sector_id}))
+                                        if responders:
+                                            for r in responders:
+                                                resp_contact = {"email": r.get("email"), "phone": r.get("phone")}
+                                                resp_msg = f"*** SECTOR ALERT ({sector_id}) ***\nVehicle: {detected_plate_text}\nLocation: {event.get('location', 'Unknown')}\nRole: {r.get('role', 'Responder')}\nTime: {datetime.now()}"
+                                                messaging_svc.send_alert(resp_contact, resp_msg, subject=f"Sector Alert: {detected_plate_text}", attachment_path=c["file"])
+                                                if verbose: print(f"[subscriber] Alert sent to responder: {r.get('name')} ({r.get('role')})", flush=True)
+                                        else:
+                                            # Fallback to Admin if no sector responders
+                                            if verbose: print(f"[subscriber] No responders for sector {sector_id}. Trying Admin...", flush=True)
                                             sys_conf = messaging_svc._get_system_config()
                                             admin_contact = {"email": sys_conf.get("admin_email"), "phone": sys_conf.get("admin_phone")}
                                             if admin_contact["email"] or admin_contact["phone"]:
-                                                fallback_msg = f"*** UNREGISTERED VEHICLE ACCIDENT ***\nPlate: {detected_plate_text}\nLocation: {event.get('location', 'Unknown')}\nTime: {datetime.now()}"
-                                                messaging_svc.send_alert(admin_contact, fallback_msg, subject=f"Admin Alert: Unregistered Vehicle {detected_plate_text}", attachment_path=c["file"])
+                                                fallback_msg = f"*** UNREGISTERED VEHICLE ACCIDENT (No Responders) ***\nPlate: {detected_plate_text}\nLocation: {event.get('location', 'Unknown')}\nTime: {datetime.now()}"
+                                                messaging_svc.send_alert(admin_contact, fallback_msg, subject=f"Admin Alert: {detected_plate_text}", attachment_path=c["file"])
                                                 c["alert_status"] = "sent_admin"
-                                                if verbose: print("[subscriber] Alert sent to ADMIN", flush=True)
-                                else:
-                                    # No Plate Detected -> Admin Fallback
-                                    if verbose: print("[subscriber] No plate detected. Triggering Admin Alert...", flush=True)
-                                    if messaging_svc:
+                                    else:
+                                         # No sector ID? Fallback to Admin
+                                        if verbose: print(f"[subscriber] Plate {detected_plate_text} valid but no Sector ID. Trying Admin...", flush=True)
                                         sys_conf = messaging_svc._get_system_config()
                                         admin_contact = {"email": sys_conf.get("admin_email"), "phone": sys_conf.get("admin_phone")}
                                         if admin_contact["email"] or admin_contact["phone"]:
-                                            fallback_msg = f"*** ACCIDENT DETECTED (UNKNOWN VEHICLE) ***\nLocation: {event.get('location', 'Unknown')}\nTime: {datetime.now()}\nNote: LPR failed to identify plate."
+                                            fallback_msg = f"*** ACCIDENT ALERT (No Sector) ***\nPlate: {detected_plate_text}\nLocation: {event.get('location', 'Unknown')}\nTime: {datetime.now()}"
+                                            messaging_svc.send_alert(admin_contact, fallback_msg, subject=f"Admin Alert: {detected_plate_text}", attachment_path=c["file"])
+                                            
+                                else:
+                                    # No Plate Detected -> Sector Responders OR Admin Fallback
+                                    if verbose: print("[subscriber] No plate detected. Checking Responders...", flush=True)
+                                    responders_alerted = False
+                                    
+                                    if sector_id and messaging_svc:
+                                        responders = list(db.responders.find({"sector_id": sector_id}))
+                                        if responders:
+                                            for r in responders:
+                                                resp_contact = {"email": r.get("email"), "phone": r.get("phone")}
+                                                resp_msg = f"*** SECTOR ALERT ({sector_id}) ***\nType: Unknown Vehicle Accident\nLocation: {event.get('location', 'Unknown')}\nTime: {datetime.now()}"
+                                                messaging_svc.send_alert(resp_contact, resp_msg, subject="Sector Alert: Unknown Vehicle", attachment_path=c["file"])
+                                                if verbose: print(f"[subscriber] Alert sent to responder: {r.get('name')}", flush=True)
+                                            responders_alerted = True
+                                    
+                                    if not responders_alerted and messaging_svc:
+                                        # Strict Admin Fallback
+                                        sys_conf = messaging_svc._get_system_config()
+                                        admin_contact = {"email": sys_conf.get("admin_email"), "phone": sys_conf.get("admin_phone")}
+                                        if admin_contact["email"] or admin_contact["phone"]:
+                                            fallback_msg = f"*** ACCIDENT DETECTED (UNKNOWN VEHICLE) ***\nLocation: {event.get('location', 'Unknown')}\nTime: {datetime.now()}\nNote: LPR failed. No responders in sector."
                                             messaging_svc.send_alert(admin_contact, fallback_msg, subject="Admin Alert: Unknown Vehicle Accident", attachment_path=c["file"])
                                             c["alert_status"] = "sent_admin_noplate"
-                                            if verbose: print("[subscriber] Alert sent to ADMIN (No Plate)", flush=True)
+                                            if verbose: print("[subscriber] Alert sent to ADMIN (No Plate/Responders)", flush=True)
 
                             except Exception as e:
                                 print(f"[subscriber] LPR error: {e}", flush=True)

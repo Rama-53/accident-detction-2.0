@@ -167,6 +167,7 @@
   box-shadow: 0 4px 24px -1px rgba(0, 0, 0, 0.2);
   padding: 20px;
   transition: transform 0.2s ease, border-color 0.2s ease;
+  overflow: hidden;
 }
 
 .glass-panel:hover {

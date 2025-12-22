@@ -67,18 +67,63 @@ export function ResponderManager() {
         }
     };
 
+    const handleExport = () => {
+        window.open(`${BACKEND_URL}/responders/export`, '_blank');
+    };
+
+    const handleImport = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        if (!confirm("This will REPLACE all current responder data with the Excel file content. Continue?")) return;
+
+        const fd = new FormData();
+        fd.append('file', file);
+        setLoading(true);
+
+        try {
+            const res = await fetch(`${BACKEND_URL}/responders/import`, {
+                method: 'POST',
+                body: fd
+            });
+            if (res.ok) {
+                const data = await res.json();
+                alert(`Import successful! Added ${data.count} responders.`);
+                fetchResponders();
+            } else {
+                const err = await res.json();
+                alert(`Import Failed: ${err.detail}`);
+            }
+        } catch (e) {
+            alert("Upload Error");
+            console.error(e);
+        } finally {
+            setLoading(false);
+            e.target.value = ''; // Reset input
+        }
+    };
+
     return (
         <div className="responder-manager">
             <div className="rm-header">
                 <h3>Responders & Sectors</h3>
-                <button className="btn-primary" onClick={() => setShowModal(true)}>
-                    <Plus size={16} /> Add Responder
-                </button>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                    <button className="btn-secondary" onClick={handleExport} title="Download Excel">
+                        <Users size={16} /> Export
+                    </button>
+                    <label className="btn-secondary" style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <Edit2 size={16} /> Import
+                        <input type="file" accept=".xlsx" hidden onChange={handleImport} />
+                    </label>
+                    <button className="btn-primary" onClick={() => setShowModal(true)}>
+                        <Plus size={16} /> Add
+                    </button>
+                </div>
             </div>
 
             <div className="rm-list">
                 {responders.length === 0 ? (
-                    <div className="empty-state">No responders added yet.</div>
+                    <div className="empty-state">No responders added yet. Import from Excel or add manually.</div>
                 ) : (
                     responders.map(r => (
                         <div key={r._id} className="responder-card">
