@@ -8,6 +8,7 @@ over ZeroMQ PUB.
 import argparse
 import json
 import time
+import base64
 import sys
 import threading
 from typing import Any
@@ -442,6 +443,14 @@ def main(
                 if publish_rate:
                     time.sleep(publish_rate)
                 continue
+
+            # Ensure full frame is always present for video buffering (unless publish_only_crashes filtered it)
+            if not event.get("full_frame_b64"):
+                # Encode raw frame (no bounding boxes)
+                # Use slightly lower quality to save bandwidth since we are streaming 30fps
+                ok, buf = cv2.imencode(".jpg", frame, [int(cv2.IMWRITE_JPEG_QUALITY), 70])
+                if ok:
+                    event["full_frame_b64"] = base64.b64encode(buf.tobytes()).decode("ascii")
 
             safe_event = make_json_safe(event)
             try:
