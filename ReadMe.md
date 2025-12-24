@@ -1,35 +1,45 @@
 # Accident Detection System 2.0
 
-A real-time accident detection system featuring a YOLOv8-based detector, a ResNet18 classifier, and a modern React dashboard for live monitoring and alerts.
+A production-grade real-time accident detection system featuring a hybrid **YOLOv11 + Norfair** detector, a **Physics Engine** for anomaly detection, and a **Deep Learning Classifier** verification layer. It includes a comprehensive React dashboard for live monitoring, video playback, and emergency responder management.
 
 ## Key Features
-- **Real-Time Detection**: Uses YOLOv11 to detect vehicles and Norfair for tracking.
-- **Accident Classification**: Verifies potential crashes using a custom ResNet18 CNN.
-- **Smart Alerts**:
-    - **Visual Feedback**: Bounding boxes turn **RED** upon crash detection.
-    - **Filtering**: Requires 3 out of 5 frames to trigger an alert.
-    - **Cooldown**: Prevents spam by enforcing a 10-frame cooldown between alerts.
-- **Full Frame Snapshots**: Captures the entire scene (not just a crop) for better context.
-- **Live Dashboard**: React-based UI with low-latency video streaming and instant alert notifications.
+
+### 🧠 Advanced Detection & Verification
+- **Hybrid AI**: Combines **YOLOv11** (Object Detection) with a custom **Keras/TensorFlow CNN** (Scene Classification) to verify accidents and reduce false positives.
+- **Physics Engine**: Calculates **deceleration**, **angle changes**, and **relative speed** to detect non-collision accidents (e.g., sudden stops, spin-outs).
+- **Video Recording**: Automatically captures and saves video clips of accidents, including **pre-crash buffer** (5s before) and **post-crash footage** (5s after), ensuring the entire context is preserved.
+- **Smart Filtering**: Uses a temporal voting system and "cooldown" logic to prevent alert spamming.
+
+### 🖥️ Modern Command Center
+- **Live Dashboard**: A high-performance **React + Vite** frontend (Glassmorphism design) with low-latency MJPEG streaming.
+- **Interactive Map**: Visualizes camera locations and accident hotspots.
+- **Responders Manager**: Manage emergency contacts (Police, Ambulance, Fire) with **Excel Import/Export** capabilities.
+- **System Config**: Real-time control over detection settings, email/WhatsApp alerts, and camera naming/locations directly from the UI.
+- **Evidence Vault**: View full-resolution snapshots and play back recorded accident videos.
+
+### 🔌 Connectivity
+- **Multi-Source Support**: Seamlessly stream from **Webcams**, **IP Cameras (RTSP)**, **DroidCam**, or **Video Files**.
+- **Real-Time Alerts**: ZeroMQ messaging architecture for sub-millisecond internal communication.
+- **Emergency Notifications**: Integrated messaging service for Email and WhatsApp alerts (configurable).
 
 ## Architecture
+
 1.  **Detector (`detector_publisher.py`)**:
-    - Reads video/webcam.
-    - Detects crashes.
-    - Publishes events via ZeroMQ (port 5556).
-    - Serves an MJPEG stream with bounding boxes (port 5001).
+    - The "Eyes". Reads video, tracks vehicles (Norfair), runs Physics checks, and serves the live visual stream.
+    - Publishes candidate events via ZeroMQ.
+    
 2.  **Subscriber (`classifier_subscriber.py`)**:
-    - Listens to ZeroMQ events.
-    - Filters alerts (3/5 threshold).
-    - Saves full-frame snapshots to `accident_crops/`.
-    - Logs events to MongoDB.
-3.  **API Server (`services/api_server.py`)**:
-    - FastAPI backend (port 8000).
-    - Serves data to the dashboard.
-    - Proxies the detector's video stream.
-4.  **Dashboard (`dashboard/`)**:
-    - Vite + React frontend (port 5173).
-    - Displays live feed, alerts, and snapshots.
+    - The "Brain". Listens for events, buffers video frames.
+    - Verifies crashes using the **AccidentClassifier** (CNN).
+    - Triggers **Video Recording** (dumps buffer to MP4).
+    - Saves evidence to MongoDB and notifies responders.
+
+3.  **Backend API (`services/api_server.py`)**:
+    - FastAPI server managing the system configuration, camera metadata, and accident history.
+    - Handles Excel imports for responders and serves video/image evidence.
+
+4.  **Frontend (`dashboard/`)**:
+    - Modern React UI for operators to monitor the system, view analytics, and manage settings.
 
 ## Installation
 
@@ -44,14 +54,10 @@ A real-time accident detection system featuring a YOLOv8-based detector, a ResNe
     ```
 3.  **MongoDB**:
     Ensure MongoDB is running locally on port 27017.
-    ```bash
-    # Docker example
-    docker run -d --name mongo -p 27017:27017 -v mongo_data:/data/db mongo:6
-    ```
 
 ## How to Run
 
-For the full system, you need to run 4 separate terminals:
+Run these components in separate terminals:
 
 ### 1. API Server (Backend)
 ```bash
@@ -67,10 +73,10 @@ Access at: **http://localhost:5173**
 
 ### 3. Detector (Video Source)
 ```bash
-# Run with video file (loops automatically)
-python detector_publisher.py --video cctv_eg.mp4 --rate 0.033
+# Run with default video
+python detector_publisher.py --video cctv_eg.mp4 
 
-# OR run with webcam
+# OR with webcam
 # python detector_publisher.py --video 0
 ```
 
@@ -79,32 +85,8 @@ python detector_publisher.py --video cctv_eg.mp4 --rate 0.033
 python classifier_subscriber.py
 ```
 
-## Configuration
-- **Video Speed**: Adjust `--rate` in `detector_publisher.py` (e.g., `0.033` for ~30 FPS).
-- **Alert Sensitivity**: Modified in `classifier_subscriber.py` (`CameraState` class).
-- **Dashboard Config**: `dashboard/src/config.js` points to the backend URL.
-
-## Troubleshooting
-- **Stream Freeze**: If the video stops, the detector might have crashed. Restart it.
-- **No Alerts**: Check if the subscriber is running and connected to MongoDB.
-- **Wrong Stream**: Ensure "Detector Stream (with BBoxes)" is selected in the dashboard.
-
-## File Structure & Descriptions
-
-### Core Services
-- **`detector_publisher.py`**: The "eyes" of the system. Reads video frames, runs the YOLOv11 detector, tracks vehicles, and publishes candidate accident events over ZeroMQ. Also hosts the MJPEG stream for visualization.
-- **`classifier_subscriber.py`**: The "brain" of the system. Subscribes to detector events, runs the ResNet18 classifier on crops to confirm accidents, applies alert filtering logic (3/5 threshold), and saves results to MongoDB.
-- **`services/api_server.py`**: The "bridge". A FastAPI backend that serves accident data to the dashboard and proxies the video stream.
-
-### Logic Modules
-- **`detector/detector.py`**: Contains the `AccidentDetector` class. Handles object detection (YOLOv11), tracking (Norfair), and heuristic crash detection (IoU + Speed).
-- **`classifier/cnn_classifier.py`**: Contains the `AccidentClassifier` class. Wraps the ResNet18 model to predict "accident" vs "no_accident" on image crops.
-
-### Frontend
-- **`dashboard/`**: A Vite + React project containing the source code for the web dashboard.
-    - **`src/App.jsx`**: Main UI component handling the video feed, alert list, and polling logic.
-    - **`src/config.js`**: Configuration file for the backend API URL.
-
-### Configuration & Models
-- **`requirements.txt`**: List of Python libraries required to run the system.
-- **`yolo11s.pt`**: Pre-trained YOLOv11 small model weights used for vehicle detection.
+## System Requirements
+- Python 3.9+
+- Node.js 16+
+- MongoDB 6+
+- CUDA-capable GPU (Recommended for real-time performance)

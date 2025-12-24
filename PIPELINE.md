@@ -1,47 +1,46 @@
 # Data Processing Pipeline
 
-This diagram illustrates the step-by-step journey of a single video frame through the Accident Detection System.
+The journey of a video frame from camera to alert.
 
 ```mermaid
 graph TD
-    %% 1. Input Stage
-    Input[("📹 Video Input")] -->|Reads Frame| Resize[("Pre-processing<br>(Resize 640x640)")]
+    %% Step 1
+    Input(("📹 Video Input")) --> Resize["Pre-process (640px)"]
     
-    %% 2. Detection Stage (The "Brain")
-    subgraph Detector_Publisher ["Step 1: Detection (Detector)"]
-        Resize --> Inference["🤖 YOLOv11 Inference"]
-        Inference -->|BBox Detections| Tracker["🎯 Norfair Tracker<br>(Assign ID)"]
-        Tracker -->|Positions + Speed| Physics["🧮 Physics Engine"]
+    %% Step 2: Detection
+    subgraph Detector Loop
+        Resize --> YOLO["🤖 YOLOv11 Inference"]
+        YOLO --> Norfair["🎯 Norfair Tracker"]
+        Norfair --> Physics["🧮 Physics Engine"]
         
-        Physics --> Check{"⚠️ Crash?"}
-        Check -->|No| StreamOnly["Generate MJPEG Stream"]
-        Check -->|Yes| Pack["📦 Package Event<br>(Base64 Frame + Metadata)"]
+        Physics --> Anomaly{Anomaly Score > 25?}
+        Anomaly -- Yes --> CrashCheck{Proximity Check?}
+        Anomaly -- No --> Stream["Stream MJPEG"]
         
-        Pack -->|ZeroMQ PUB| ZMQ(("⚡ ZMQ Socket"))
+        CrashCheck -- Yes --> ZMQ["⚡ Publish Event"]
+        CrashCheck -- No --> Stream
     end
 
-    %% 3. Transmission
-    ZMQ -.->|High Speed Transport| Subscriber_In(("📥 ZMQ SUB"))
-
-    %% 4. Subscriber Stage (The "Clerk")
-    subgraph Classifier_Subscriber ["Step 2: Analysis (Subscriber)"]
-        Subscriber_In --> Buffer["⏳ 10-Frame Buffer"]
-        Buffer --> Threshold{"📈 >7/10 Frames?"}
+    %% Step 3: Analysis
+    subgraph Subscriber Loop
+        ZMQ --> Buffer["⏳ Update Video Buffer"]
+        ZMQ --> Classify["🧠 Keras Classifier<br>(Scene Analysis)"]
         
-        Threshold -->|No| Discard["🗑️ Discard (False Positive)"]
-        Threshold -->|Yes| BuildDoc["📝 Build Alert Document"]
-        
-        BuildDoc -->|Full Frame| LPR["🔍 License Plate Recognition<br>(Scan Full Frame)"]
-        LPR -->|Plate Found?| ContactCheck{"📒 Emergency Contact?"}
-        ContactCheck -->|Yes| AlertSMS["📲 Send Emergency Alert"]
-        ContactCheck -.->|Continue| DB_Write["💾 Insert into MongoDB"]
-        LPR -.->|No Plate| DB_Write
+        Classify --> IsCrash{Is Accident?}
+        IsCrash -- Yes --> Record["🎥 Dump Buffer +<br>Start Recording"]
+        IsCrash -- No --> Discard["Ignore"]
     end
-
-    %% 5. Visualization Stage
-    subgraph Frontend ["Step 3: Visualization (Dashboard)"]
-        DB_Write -.->|Polling| API["🔌 API Server"]
-        API -->|JSON| UI["🖥️ React Dashboard"]
-        UI -->|Render| AlertCard["🚨 Display Alert & Snapshot"]
+    
+    %% Step 4: Action
+    subgraph Action
+        Record --> SaveFile["💾 Save MP4 Video"]
+        SaveFile --> DB["💽 MongoDB Insert"]
+        DB --> Notify["📲 Notify Responders<br>(Email/WhatsApp)"]
     end
 ```
+
+## Key Pipeline Concepts
+
+1.  **Physics-First Detection**: We don't wait for a visual "crunch". We detect the *kinetic energy* changes (sudden deceleration) that precede or accompany a crash.
+2.  **Temporal Consistency**: A crash isn't a single frame. The system uses a sliding window (history buffer) to ensure a crash persists before alerting.
+3.  **Contextual Recording**: By buffering 5 seconds of video *before* the trigger, we capture the "cause" of the accident, not just the aftermath.

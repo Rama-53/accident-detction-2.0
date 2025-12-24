@@ -1,82 +1,99 @@
 # System Architecture & Data Flow
 
-This document explains how the Accident Detection System processes video data from input to alert.
-
-## High-Level Data Flow
+This document details the modules and data flow of the Accident Detection System 2.0.
 
 ```mermaid
 graph TD
-    Video["Video Source<br>(CCTV/Webcam)"] -->|Frames| Publisher[detector_publisher.py]
-    
-    subgraph Detection Node
-        Publisher -->|"Raw Frame"| Detector[detector/detector.py]
-        Detector -->|"YOLOv11 + Norfair"| Tracking[Object Tracking]
-        Tracking -->|"Physics Logic"| CrashCheck{Crash?}
-        CrashCheck -->|Yes| Event[Accident Event]
-        CrashCheck -->|No| Safe[Safe Event]
+    %% Sources
+    Source["Video Source<br>(CCTV / Webcam / File)"] -->|Raw Frames| Detector
+
+    %% 1. Detector Node
+    subgraph Detection Node [detector_publisher.py]
+        Detector["Running YOLOv11"]
+        Tracker["Norfair Tracker"]
+        Physics["Physics Engine<br>(Deceleration, Angle, Speed)"]
+        StreamServer["MJPEG Streamer<br>(Port 5001)"]
         
-        %% Config Loop
-        DB[(MongoDB)] .->|"Poll Config"| Publisher
+        Source --> Detector
+        Detector --> Tracker
+        Tracker --> Physics
+        Physics -->|Anomaly Score| CrashCheck{Potential<br>Crash?}
+        
+        CrashCheck -->|Yes| Pub["ZMQ Publisher<br>(Port 5556)"]
+        Detector --> StreamServer
     end
 
-    Publisher -->|"MJPEG Stream"| Dashboard["Dashboard UI"]
-    Publisher -->|"ZeroMQ (JSON)"| Subscriber[classifier_subscriber.py]
-
-    subgraph Processing Node
-        Subscriber -->|"Receive Event"| Filter{Is Crash?}
-        Filter -->|Yes| Buffer[10-Frame Buffer]
-        Buffer -->|"Thresh >= 7"| Confirmed{Confirmed?}
-        Confirmed -->|Yes| Alert[Full Frame Alert]
-        Alert -->|Write| DB
+    %% 2. Subscriber Node
+    subgraph Processing Node [classifier_subscriber.py]
+        Sub["ZMQ Subscriber"]
+        Buffer["Video Buffer<br>(Circular Deque)"]
+        Classifier["Deep Learning Classifier<br>(Keras CNN)"]
+        Recorder["Video Recorder"]
         
-        %% Crop logic disabled per user request
-        %% Confirmed -->|Crop| LPR[License Plate Recog]
+        Pub -->|JSON + B64 Frame| Sub
+        Sub --> Buffer
+        Sub -->|Trigger| Classifier
+        
+        Classifier -->|Confirmed| Recorder
+        Buffer -->|Dump History| Recorder
+        Recorder -->|Save MP4| Diskstorage["/accident_crops/videos"]
+        
+        Classifier -->|Confirmed| DB_Writer["MongoDB Writer"]
+        Classifier -->|Confirmed| Notifier["Messaging Service"]
     end
 
-    subgraph Backend API
-        DB -->|Query| API[services/api_server.py]
-        API -->|"JSON Data"| Dashboard
-        Dashboard -->|"Toggle Detection"| API
-        API -->|"Update Config"| DB
+    %% 3. Backend & Storage
+    subgraph Backend Services
+        DB[(MongoDB)]
+        API["FastAPI Server<br>(Port 8000)"]
+        
+        DB_Writer --> DB
+        Notifier -->|Email/WhatsApp| Responders["External Responders"]
+        
+        API <-->|Read/Write| DB
+        API -->|Serve Media| Diskstorage
+    end
+
+    %% 4. Frontend
+    subgraph Dashboard UI [React + Vite]
+        UI["Main Dashboard"]
+        
+        StreamServer -.->|MJPEG Feed| UI
+        API -->|JSON Data| UI
+        UI -->|Config Updates| API
+        UI -->|Manage Responders| API
     end
 ```
 
-## Detailed Module Breakdown
+## Detailed Component Breakdown
 
-### 1. Video Input & Detection (`detector_publisher.py`)
-This is the entry point of the system.
-*   **Input**: Reads video from a file (`.mp4`) or a webcam (`0`).
-*   **Preprocessing**: Resizes frames for the model.
-*   **Detection Core (`detector/detector.py`)**:
-    *   **YOLOv11**: Detects vehicles (cars, trucks, buses, motorcycles).
-    *   **Norfair**: Tracks these objects across frames to assign unique IDs.
-    *   **Physics Engine**: Calculates speed, trajectory, and acceleration. It detects collisions based on:
-        *   **Deceleration**: Sudden stops.
-        *   **Box Overlap (IoU)**: Objects merging.
-        *   **Angle Change**: Sudden deviations.
-*   **Output 1 (Stream)**: Hosts a local HTTP server (default port `5001`) streaming MJPEG video with bounding boxes drawn.
-*   **Output 2 (Data)**: Publishes analysis results (JSON) via **ZeroMQ** to port `5556`.
+### 1. Detector (`detector/detector.py`)
+The heavy lifter. It doesn't just look for "cars", it looks for "behavior".
+*   **Object Detection**: YOLOv11s identifies vehicles.
+*   **Tracking**: Norfair assigns IDs to track vehicles across frames.
+*   **Physics Engine**:
+    *   **Deceleration**: Detects rapid speed drops (braking/impact).
+    *   **Angle Change**: Detects sudden rotation or spin-outs.
+    *   **Interaction**: Monitors proximity between high-stress objects.
+*   **Output**: High-efficiency ZeroMQ messages containing physics data and frame snapshots.
 
-### 2. Event Processing (`classifier_subscriber.py`)
-This script listens to the detector's output.
-*   **Subscription**: Connects to the ZeroMQ port (`5556`) to receive real-time frame data.
-*   **Filtering**: Ignores "safe" frames. Focuses only on frames tagged with `crashes`.
-*   **Post-Processing**:
-    *   **Snapshot**: Decodes the base64 image from the event.
-    *   **Classification**: Uses a CNN (`classifier/cnn_classifier.py`) to estimate severity (minor/major).
-    *   **OCR**: Scans for license plates using EasyOCR/YOLO.
-*   **Storage**: Saves the final "Alert" document into **MongoDB**.
+### 2. Subscriber (`classifier_subscriber.py`)
+The decision maker and archivist.
+*   **Scene Verification**: Uses a custom Keras model to classify the *entire scene* as "Accident" or "Normal", filtering out YOLO false positives.
+*   **Evidence Recorder**:
+    *   Keeps a rolling buffer of the last ~5 seconds of video.
+    *   When an accident is confirmed, it "dumps" this buffer and continues recording for another 5 seconds.
+    *   Result: A continuous 10-second MP4 clip capturing the *cause* and *aftermath*.
+*   **Data Aggregation**: Groups intermittent detections into single "Alert Events" to keep the database clean.
 
 ### 3. Backend API (`services/api_server.py`)
-The bridge between the database and the user interface.
-*   **Framework**: FastAPI (Python).
-*   **Function**:
-    *   Fetches alerts from MongoDB (`GET /accidents`).
-    *   Updates camera settings (`POST /cameras/{id}`).
-    *   Serves snapshot images (`GET /snapshot/{id}`).
+The system brain.
+*   **Configuration Hub**: Manages camera settings (ROI, Location) and system flags (AI enabled/disabled).
+*   **Responder Manager**: Handles the directory of emergency contacts (police/fire), supporting **Excel import/export** for bulk management.
+*   **Media Server**: Proxies video streams and serves high-res snapshots and recorded videos to the frontend.
 
 ### 4. Dashboard (`dashboard/`)
-The user interface built with React.
-*   **Live View**: Displays the MJPEG stream (`<img>` tag pointing to port `5001`).
-*   **Alerts**: Polls the API every few seconds to show new accidents in the "Recent Alerts" list.
-*   **Controls**: Allows you to toggle "AI Detection" (sends config to API -> MongoDB -> Detector polls MongoDB).
+The command center.
+*   **Visuals**: Precision clock, sensor waveforms, and real-time live feeds.
+*   **Controls**: Global system settings, camera-specific toggles, and responder address book.
+*   **Playback**: Integrated video player for review of accident footage.
