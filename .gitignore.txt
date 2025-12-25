@@ -1,0 +1,17 @@
+# Trained models
+*.keras
+*.h5
+*.pt
+*.pth
+
+# Model directories
+models/
+experiments/transfer_learning/
+
+# Python
+__pycache__/
+*.pyc
+
+# Virtual environments
+venv/
+.env

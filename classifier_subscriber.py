@@ -227,12 +227,17 @@ def main(zmq_host: str, zmq_port: int, mongo_uri: str, db_name: str, out_dir: st
             
             if full_frame_pil:
                 try:
+                    t0 = time.time()
                     scene_pred = classifier.predict(full_frame_pil)
+                    dt = time.time() - t0
+                    if verbose and frame_idx % 30 == 0:
+                         print(f"[subscriber] Frame {frame_idx} classification took {dt*1000:.1f}ms (GPU/CPU)")
+
                     if scene_pred["label"] == "vehicle_collision":
                         is_accident_scene = True
                         if verbose: print(f"[subscriber] SCENE ACCIDENT DETECTED! (conf={scene_pred['confidence']:.2f})")
                     else:
-                        # DEBUG: Print negative result to ensure it's running
+                        # DEBUG: Print negative result
                         if verbose and frame_idx % 30 == 0:
                             print(f"[debug] Frame {frame_idx}: Classified as NORMAL (conf={scene_pred['confidence']:.2f})")
                 except Exception as e:
@@ -299,13 +304,30 @@ def main(zmq_host: str, zmq_port: int, mongo_uri: str, db_name: str, out_dir: st
             latest_alert = accidents_col.find_one({"camera_id": camera_id}, sort=[("inserted_at", -1)])
             should_group = False
             if latest_alert:
-                delta = (datetime.now(timezone.utc).replace(tzinfo=None) - latest_alert["inserted_at"]).total_seconds()
+                # Use last_updated if available, else inserted_at
+                last_ts = latest_alert.get("last_updated", latest_alert["inserted_at"])
+                # Ensure we have a datetime object
+                if isinstance(last_ts, str):
+                     try:
+                         # Attempt simplistic parse if it somehow became a string (unlikely with PyMongo)
+                         last_ts = datetime.fromisoformat(last_ts)
+                     except:
+                         last_ts = latest_alert["inserted_at"]
+
+                # Calculate delta from the LAST activity, not the start
+                delta = (datetime.now(timezone.utc).replace(tzinfo=None) - last_ts).total_seconds()
+                
+                # Rolling window: if new detection is within 10s of the LAST detection, group it.
                 if delta < 10.0:
                     should_group = True
             
             if should_group:
                 # Grouping
-                state.current_alert_id = latest_alert["_id"] # Keep tracking this ID for video update
+                # VITAL: Do NOT update current_alert_id here if we are already recording for this ID.
+                # If we switch IDs mid-recording, the video will be attached to the wrong (or newer) alert.
+                # Actually, since we are grouping into 'latest_alert', we MUST ensure state.current_alert_id matches it.
+                state.current_alert_id = latest_alert["_id"] 
+                
                 try:
                     accidents_col.update_one(
                         {"_id": latest_alert["_id"]},
