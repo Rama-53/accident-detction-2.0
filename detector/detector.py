@@ -99,6 +99,7 @@ class AccidentDetector:
         # Load YOLO model
         print(f"[AccidentDetector] Loading YOLO model from {self.model_path}")
         self.model = YOLO(self.model_path)
+        # YOLO will auto-select GPU if available (best performance)
 
         # Norfair tracker (tracking the center point of each detection)
         self.tracker = norfair.Tracker(

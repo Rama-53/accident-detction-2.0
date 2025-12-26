@@ -15,6 +15,7 @@ export function Settings() {
 
     const [config, setConfig] = useState({
         multi_detection_enabled: multiDetectionEnabled || false,
+        video_recording_enabled: true,
         email_alerts_enabled: true,
         whatsapp_alerts_enabled: true,
         admin_email: "",
@@ -52,6 +53,7 @@ export function Settings() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     multi_detection_enabled: config.multi_detection_enabled,
+                    video_recording_enabled: config.video_recording_enabled,
                     email_alerts_enabled: config.email_alerts_enabled,
                     whatsapp_alerts_enabled: config.whatsapp_alerts_enabled,
                     admin_email: config.admin_email,
@@ -107,6 +109,20 @@ export function Settings() {
                                             }
                                             setConfig({ ...config, multi_detection_enabled: e.target.checked });
                                         }}
+                                    />
+                                    <span className="slider round"></span>
+                                </label>
+                            </div>
+                            <div className="setting-item">
+                                <div className="setting-info">
+                                    <label>Video Recording</label>
+                                    <p>Automatically record video clips of accident events</p>
+                                </div>
+                                <label className="switch">
+                                    <input
+                                        type="checkbox"
+                                        checked={config.video_recording_enabled ?? true}
+                                        onChange={e => setConfig({ ...config, video_recording_enabled: e.target.checked })}
                                     />
                                     <span className="slider round"></span>
                                 </label>
