@@ -193,17 +193,41 @@ export function EventModal({ event, onClose }) {
                             </div>
                         )}
 
-                        {/* Actions */}
-                        {event.video_url && (
-                            <a
-                                href={event.video_url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="action-btn primary full-width"
-                            >
-                                <ExternalLink size={16} />
-                                Access Recording
-                            </a>
+                        {/* Video Recording */}
+                        {event.video_filename && event.video_status === 'ready' && (
+                            <div className="video-section">
+                                <h3>Recorded Video</h3>
+                                <video
+                                    controls
+                                    style={{
+                                        width: '100%',
+                                        borderRadius: '8px',
+                                        marginTop: '10px',
+                                        background: '#000'
+                                    }}
+                                >
+                                    <source
+                                        src={`${BACKEND_URL}/video/${event.video_filename}`}
+                                        type="video/mp4"
+                                    />
+                                    Your browser does not support video playback.
+                                </video>
+                                <a
+                                    href={`${BACKEND_URL}/video/${event.video_filename}`}
+                                    download={event.video_filename}
+                                    className="action-btn primary full-width"
+                                    style={{ marginTop: '10px' }}
+                                >
+                                    <ExternalLink size={16} />
+                                    Download Video
+                                </a>
+                            </div>
+                        )}
+                        {event.video_status === 'recording' && (
+                            <div className="info-message">
+                                <Video size={16} />
+                                <span>Video is currently being recorded...</span>
+                            </div>
                         )}
                     </div>
                 </div>

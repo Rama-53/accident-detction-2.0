@@ -486,7 +486,7 @@ if __name__ == "__main__":
     parser.add_argument("--rate", "-r", default=None, type=float, help="Optional publish delay in seconds (e.g. 0.033 -> ~30 FPS)")
     parser.add_argument("--camera-id", default="demo_cam_main", help="Camera/source identifier embedded in events")
     parser.add_argument("--only-crashes", action="store_true", help="Publish only frames that have confirmed crashes (reduces bandwidth)")
-    parser.add_argument("--model", "-m", default="yolo11s.pt", help="Path to YOLO model (default: yolo11s.pt)")
+    parser.add_argument("--model", "-m", default="yolo11n.pt", help="Path to YOLO model (default: yolo11n.pt - faster)")
     parser.add_argument("--location", help="Manual location name (e.g. 'Main St')")
     parser.add_argument("--lat", type=float, help="Manual latitude")
     parser.add_argument("--lng", type=float, help="Manual longitude")

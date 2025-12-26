@@ -703,6 +703,26 @@ def get_snapshot(accident_id: str, crop_idx: int = 0):
     return FileResponse(path, media_type="image/jpeg")
 
 
+@app.get("/video/{video_filename}")
+def get_video(video_filename: str):
+    """
+    Serve recorded accident videos from the accident_crops/videos directory.
+    """
+    # Security: Only allow filenames, not paths
+    if "/" in video_filename or "\\" in video_filename:
+        raise HTTPException(status_code=400, detail="Invalid filename")
+    
+    # Construct path to video file
+    video_dir = PROJECT_ROOT / "accident_crops" / "videos"
+    video_path = video_dir / video_filename
+    
+    if not video_path.exists():
+        raise HTTPException(status_code=404, detail="Video file not found")
+    
+    return FileResponse(video_path, media_type="video/mp4")
+
+
+
 def _proxy_stream_generator(url: str) -> Generator[bytes, None, None]:
     """
     Proxy an MJPEG stream directly from a URL (e.g., detector output) to the client.
