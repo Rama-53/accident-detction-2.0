@@ -2,44 +2,97 @@
 .system-indicators {
     display: flex;
     align-items: center;
-    gap: 8px;
-    background: rgba(0, 0, 0, 0.4);
-    border: 1px solid var(--glass-border);
-    border-radius: 8px;
-    padding: 6px 10px;
+    gap: 10px;
+    background: rgba(15, 23, 42, 0.6);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    padding: 8px 14px;
     margin-right: 15px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
 }
 
 .indicator-badge {
     display: flex;
     align-items: center;
-    gap: 5px;
-    font-family: 'Courier New', monospace;
+    gap: 6px;
+    font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
     font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
     color: var(--text-muted);
-    background: rgba(255, 255, 255, 0.05);
-    padding: 2px 6px;
-    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.04);
+    padding: 5px 10px;
+    border-radius: 6px;
     border: 1px solid transparent;
-    transition: all 0.3s ease;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+}
+
+.indicator-badge::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+    transition: left 0.5s;
+}
+
+.indicator-badge:hover::before {
+    left: 100%;
 }
 
 .indicator-badge.active {
-    border-color: rgba(74, 222, 128, 0.2);
-    color: var(--text-main);
+    border-color: rgba(74, 222, 128, 0.3);
+    background: rgba(16, 185, 129, 0.08);
+    color: #4ade80;
+    box-shadow: 0 0 12px rgba(16, 185, 129, 0.15);
 }
 
 .indicator-dot {
-    width: 6px;
-    height: 6px;
+    width: 7px;
+    height: 7px;
     border-radius: 50%;
     background: var(--text-muted);
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+.indicator-dot::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    background: inherit;
+    opacity: 0;
 }
 
 .indicator-badge.active .indicator-dot {
-    background: var(--success);
-    box-shadow: 0 0 5px var(--success);
-    animation: stablePulse 3s infinite;
+    background: #10b981;
+    box-shadow: 0 0 8px rgba(16, 185, 129, 0.6), 0 0 12px rgba(16, 185, 129, 0.3);
+}
+
+.indicator-badge.active .indicator-dot::after {
+    animation: ripple 2s infinite;
+}
+
+@keyframes ripple {
+    0% {
+        opacity: 0.8;
+        transform: translate(-50%, -50%) scale(1);
+    }
+
+    100% {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(2.5);
+    }
 }
 
 @keyframes stablePulse {
@@ -50,14 +103,20 @@
     }
 
     50% {
-        opacity: 0.7;
+        opacity: 0.6;
     }
 }
 
 /* Optional: Add a "processing" state with blinking amber */
+.indicator-badge.processing {
+    border-color: rgba(251, 191, 36, 0.3);
+    background: rgba(251, 191, 36, 0.08);
+    color: #fbbf24;
+}
+
 .indicator-badge.processing .indicator-dot {
     background: #fbbf24;
-    box-shadow: 0 0 5px #fbbf24;
+    box-shadow: 0 0 8px rgba(251, 191, 36, 0.6);
     animation: quickBlink 0.5s infinite alternate;
 }
 
@@ -71,27 +130,37 @@
     }
 }
 
-/* Video Recording Indicator */
+/* Video Recording Indicator - GREEN when active */
 .indicator-badge.recording {
-    border-color: rgba(239, 68, 68, 0.3);
-    color: #ef4444;
-    background: rgba(239, 68, 68, 0.1);
+    border-color: rgba(16, 185, 129, 0.4);
+    color: #10b981;
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.12), rgba(16, 185, 129, 0.06));
+    box-shadow: 0 0 16px rgba(16, 185, 129, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    font-weight: 700;
 }
 
 .indicator-badge.recording .recording-pulse {
-    background: #ef4444;
-    box-shadow: 0 0 8px #ef4444;
-    animation: recordingPulse 1.5s infinite;
+    background: #10b981;
+    box-shadow: 0 0 10px rgba(16, 185, 129, 0.8), 0 0 20px rgba(16, 185, 129, 0.4);
+    animation: recordingPulse 1.2s ease-in-out infinite;
 }
 
+.indicator-badge.recording .recording-pulse::after {
+    animation: ripple 1.2s ease-in-out infinite;
+}
+
+/* Video Recording Indicator - RED when inactive */
 .indicator-badge.inactive {
-    border-color: rgba(107, 114, 128, 0.2);
-    color: #6b7280;
-    background: rgba(107, 114, 128, 0.05);
+    border-color: rgba(239, 68, 68, 0.25);
+    color: #ef4444;
+    background: rgba(239, 68, 68, 0.06);
+    box-shadow: 0 0 8px rgba(239, 68, 68, 0.1);
+    opacity: 0.85;
 }
 
 .indicator-badge.inactive .indicator-dot {
-    background: #6b7280;
+    background: #ef4444;
+    box-shadow: 0 0 6px rgba(239, 68, 68, 0.4);
 }
 
 @keyframes recordingPulse {
@@ -103,7 +172,40 @@
     }
 
     50% {
-        opacity: 0.5;
-        transform: scale(0.9);
+        opacity: 0.4;
+        transform: scale(0.85);
+    }
+}
+
+/* Hover effects */
+.indicator-badge:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.indicator-badge.recording:hover {
+    box-shadow: 0 0 20px rgba(16, 185, 129, 0.3), 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.indicator-badge.inactive:hover {
+    box-shadow: 0 0 12px rgba(239, 68, 68, 0.2), 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .system-indicators {
+        gap: 6px;
+        padding: 6px 10px;
+    }
+
+    .indicator-badge {
+        padding: 4px 8px;
+        font-size: 10px;
+        gap: 4px;
+    }
+
+    .indicator-dot {
+        width: 6px;
+        height: 6px;
     }
 }

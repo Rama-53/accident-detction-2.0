@@ -15,7 +15,7 @@ export function Settings() {
 
     const [config, setConfig] = useState({
         multi_detection_enabled: multiDetectionEnabled || false,
-        video_recording_enabled: true,
+        video_recording_enabled: false,
         email_alerts_enabled: true,
         whatsapp_alerts_enabled: true,
         admin_email: "",
@@ -121,7 +121,7 @@ export function Settings() {
                                 <label className="switch">
                                     <input
                                         type="checkbox"
-                                        checked={config.video_recording_enabled ?? true}
+                                        checked={config.video_recording_enabled ?? false}
                                         onChange={e => setConfig({ ...config, video_recording_enabled: e.target.checked })}
                                     />
                                     <span className="slider round"></span>

@@ -5,7 +5,7 @@ import { BACKEND_URL } from '../config';
 import './SystemIndicators.css';
 
 export function SystemIndicators() {
-    const [videoRecordingEnabled, setVideoRecordingEnabled] = useState(true);
+    const [videoRecordingEnabled, setVideoRecordingEnabled] = useState(false);
 
     // Fetch video recording status from system config
     useEffect(() => {
@@ -14,7 +14,7 @@ export function SystemIndicators() {
                 const res = await fetch(`${BACKEND_URL}/system/config`);
                 if (res.ok) {
                     const data = await res.json();
-                    setVideoRecordingEnabled(data.video_recording_enabled ?? true);
+                    setVideoRecordingEnabled(data.video_recording_enabled ?? false);
                 }
             } catch (err) {
                 console.error('Failed to fetch system config:', err);

@@ -184,7 +184,7 @@ def main(zmq_host: str, zmq_port: int, mongo_uri: str, db_name: str, out_dir: st
         print(f"[subscriber] MongoDB: {mongo_uri}, DB: {db_name}")
     
     # Load system configuration
-    SYSTEM_CONFIG = {"video_recording_enabled": True}  # Default enabled
+    SYSTEM_CONFIG = {"video_recording_enabled": False}  # Default disabled
     try:
         sys_conf_doc = db.system_config.find_one({"config_id": "main"})
         if sys_conf_doc and "video_recording_enabled" in sys_conf_doc:
@@ -382,7 +382,7 @@ def main(zmq_host: str, zmq_port: int, mongo_uri: str, db_name: str, out_dir: st
             state.last_write_ts = now
             
             # Start video recording (if enabled in settings)
-            video_enabled = SYSTEM_CONFIG.get("video_recording_enabled", True)
+            video_enabled = SYSTEM_CONFIG.get("video_recording_enabled", False)
             if not state.is_recording and full_frame_cv2 is not None and video_enabled:
                 state.is_recording = True
                 state.recording_frames_left = POST_EVENT_SECONDS * FPS

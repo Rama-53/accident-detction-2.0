@@ -253,6 +253,7 @@ class CameraConfig(BaseModel):
 
 class SystemConfig(BaseModel):
     multi_detection_enabled: Optional[bool] = None
+    video_recording_enabled: Optional[bool] = None
     email_alerts_enabled: Optional[bool] = None
     whatsapp_alerts_enabled: Optional[bool] = None
     admin_email: Optional[str] = None
@@ -260,6 +261,7 @@ class SystemConfig(BaseModel):
 
 SYSTEM_CONFIG: Dict[str, Any] = {
     "multi_detection_enabled": False,
+    "video_recording_enabled": False,  # Default OFF
     "email_alerts_enabled": True,    # Default ON
     "whatsapp_alerts_enabled": True, # Default ON
     "admin_email": "",
@@ -287,6 +289,9 @@ def get_system_config():
 def update_system_config(config: SystemConfig):
     if config.multi_detection_enabled is not None:
         SYSTEM_CONFIG["multi_detection_enabled"] = config.multi_detection_enabled
+    
+    if config.video_recording_enabled is not None:
+        SYSTEM_CONFIG["video_recording_enabled"] = config.video_recording_enabled
     
     if config.email_alerts_enabled is not None:
         SYSTEM_CONFIG["email_alerts_enabled"] = config.email_alerts_enabled

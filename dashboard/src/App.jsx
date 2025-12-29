@@ -13,6 +13,7 @@ import { Gallery } from "./components/Gallery";
 import { IntroOverlay } from "./components/IntroOverlay";
 import { EventModal } from "./components/EventModal";
 import { Settings } from "./components/Settings";
+import { ToastContainer } from "./components/ToastContainer";
 
 function AppContent() {
   const {
@@ -31,6 +32,8 @@ function AppContent() {
           onClose={() => setActiveEvent(null)}
         />
       )}
+
+      <ToastContainer />
 
       <Layout>
         {activeTab === "dashboard" && <Dashboard />}

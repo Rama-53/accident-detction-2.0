@@ -1,7 +1,6 @@
 // src/components/AlertsList.jsx
 import { Bell } from 'lucide-react';
 import { BACKEND_URL } from '../config';
-import PremiumCard from './PremiumCard';
 import { useSystem } from '../context/SystemContext';
 import './AlertsList.css';
 
@@ -37,8 +36,13 @@ export function AlertsList() {
                         <span>No recent alerts</span>
                     </div>
                 )}
-                {events.map(e => (
-                    <PremiumCard key={e.id} onClick={() => setActiveEvent(e)}>
+                {events.map((e, index) => (
+                    <div
+                        key={e.id}
+                        className="alert-card"
+                        onClick={() => setActiveEvent(e)}
+                        style={{ animationDelay: `${index * 0.05}s` }}
+                    >
                         {e.snapshot_id && (
                             <img
                                 src={`${BACKEND_URL}/snapshot/${e.snapshot_id}`}
@@ -55,7 +59,7 @@ export function AlertsList() {
                                 <span className="camera-id">{e.camera_name || e.camera_id}</span>
                             </div>
                         </div>
-                    </PremiumCard>
+                    </div>
                 ))}
             </div>
         </div>

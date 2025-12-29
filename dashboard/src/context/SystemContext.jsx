@@ -1,7 +1,8 @@
-import { createContext, useContext, useState, useEffect } from "react";
+import { createContext, useContext, useState, useEffect, useRef, useCallback } from "react";
 import { BACKEND_URL } from "../config";
 import { useSystemData } from "../hooks/useSystemData";
 import { useCameraControl } from "../hooks/useCameraControl";
+import { playAlertSound } from "../utils/audioAlert";
 
 const SystemContext = createContext(null);
 
@@ -34,6 +35,10 @@ export function SystemProvider({ children }) {
     const [filterStartTime, setFilterStartTime] = useState("");
     const [filterEndTime, setFilterEndTime] = useState("");
     const [multiDetectionEnabled, setMultiDetectionEnabled] = useState(false);
+
+    // --- Toast Notification State ---
+    const [toasts, setToasts] = useState([]);
+    const seenAlertIds = useRef(new Set());
 
     // --- Hooks ---
     const systemData = useSystemData(selectedCamera, filterStartTime, filterEndTime);
@@ -68,6 +73,43 @@ export function SystemProvider({ children }) {
         }
     }, [events, activeEvent]);
 
+    // Toast Management Functions
+    const addToast = useCallback((event) => {
+        const toastId = `toast-${event.id}-${Date.now()}`;
+        const newToast = {
+            id: toastId,
+            event: event,
+            timestamp: Date.now()
+        };
+
+        setToasts(prev => [...prev, newToast]);
+
+        // Play audio alert
+        playAlertSound();
+    }, []);
+
+    const removeToast = useCallback((toastId) => {
+        setToasts(prev => prev.filter(t => t.id !== toastId));
+    }, []);
+
+    // Detect new alerts and trigger toasts
+    useEffect(() => {
+        if (!events || events.length === 0) return;
+
+        events.forEach(event => {
+            // Check if this is a new alert we haven't seen before
+            if (!seenAlertIds.current.has(event.id)) {
+                seenAlertIds.current.add(event.id);
+
+                // Only show toast for genuinely new alerts (not on initial load)
+                // We check if we already have some alerts tracked to avoid showing toasts on page load
+                if (seenAlertIds.current.size > 1) {
+                    addToast(event);
+                }
+            }
+        });
+    }, [events, addToast]);
+
     // Fetch System Config
     useEffect(() => {
         fetch(`${BACKEND_URL}/system/config`)
@@ -93,6 +135,11 @@ export function SystemProvider({ children }) {
         filterStartTime, setFilterStartTime,
         filterEndTime, setFilterEndTime,
         multiDetectionEnabled, setMultiDetectionEnabled,
+
+        // Toast Notifications
+        toasts,
+        addToast,
+        removeToast,
 
         // System Data
         ...systemData,

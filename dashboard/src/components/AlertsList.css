@@ -2,9 +2,11 @@
 
 .alerts-panel {
     height: 100%;
+    max-height: 100%;
     display: flex;
     flex-direction: column;
     padding: 20px;
+    overflow: hidden;
 }
 
 .alerts-panel .panel-header {
@@ -32,6 +34,21 @@
     border-radius: 99px;
     font-size: 11px;
     font-weight: 700;
+    animation: countBounce 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+@keyframes countBounce {
+    0% {
+        transform: scale(0);
+    }
+
+    50% {
+        transform: scale(1.2);
+    }
+
+    100% {
+        transform: scale(1);
+    }
 }
 
 .btn-clear {
@@ -81,12 +98,15 @@
 }
 
 .event-list {
-    flex: 1;
+    flex: 1 1 auto;
+    min-height: 0;
     overflow-y: auto;
+    overflow-x: hidden;
     display: flex;
     flex-direction: column;
     gap: 12px;
     padding-right: 4px;
+    scroll-behavior: smooth;
 }
 
 .event-list::-webkit-scrollbar {
@@ -96,6 +116,11 @@
 .event-list::-webkit-scrollbar-thumb {
     background: var(--surface-card-hover);
     border-radius: 2px;
+    transition: background 0.2s ease;
+}
+
+.event-list::-webkit-scrollbar-thumb:hover {
+    background: var(--primary-bg);
 }
 
 .no-alerts {
@@ -106,14 +131,135 @@
     justify-content: center;
     gap: 12px;
     color: var(--text-dimmed);
+    animation: fadeIn 0.5s ease-in;
 }
 
 .no-alerts svg {
     opacity: 0.3;
+    animation: float 3s ease-in-out infinite;
 }
 
-/* .event-card removed - replaced by PremiumCard styles */
+@keyframes float {
 
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+
+    50% {
+        transform: translateY(-10px);
+    }
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+/* ========== ALERT CARD ========== */
+
+.alert-card {
+    display: flex;
+    flex-shrink: 0;
+    gap: 14px;
+    padding: 14px;
+    background: rgba(30, 30, 46, 0.6);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    animation: slideInAlert 0.4s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+}
+
+@keyframes slideInAlert {
+    from {
+        opacity: 0;
+        transform: translateX(-20px) scale(0.95);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(0) scale(1);
+    }
+}
+
+/* Shimmer effect on hover */
+.alert-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg,
+            transparent,
+            rgba(255, 255, 255, 0.08),
+            transparent);
+    transition: left 0.6s;
+    pointer-events: none;
+    z-index: 1;
+}
+
+.alert-card:hover::before {
+    left: 100%;
+}
+
+/* Hover effect - AI gradient like active nav tab */
+.alert-card:hover {
+    transform: translateY(-2px) scale(1.01);
+    background: linear-gradient(rgba(30, 30, 46, 0.6), rgba(30, 30, 46, 0.6)) padding-box,
+        linear-gradient(135deg, #3b82f6, #8b5cf6, #ec4899) border-box;
+    border: 2px solid transparent;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3),
+        0 0 20px rgba(139, 92, 246, 0.3);
+}
+
+/* Glow effect on hover */
+.alert-card:hover::after {
+    content: '';
+    position: absolute;
+    inset: -2px;
+    z-index: -1;
+    background: linear-gradient(135deg, #3b82f6, #8b5cf6, #ec4899);
+    border-radius: 14px;
+    filter: blur(12px);
+    opacity: 0.5;
+    pointer-events: none;
+}
+
+.alert-card:active {
+    transform: translateY(0) scale(0.99);
+}
+
+/* Pulse animation for newest alert (first in list) */
+.alert-card:first-child {
+    animation: slideInAlert 0.4s cubic-bezier(0.16, 1, 0.3, 1) backwards,
+        newAlertPulse 2s ease-in-out 0.5s;
+}
+
+@keyframes newAlertPulse {
+
+    0%,
+    100% {
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    }
+
+    50% {
+        box-shadow: 0 4px 20px rgba(239, 68, 68, 0.4),
+            0 0 30px rgba(239, 68, 68, 0.2);
+    }
+}
+
+/* Thumbnail */
 .event-thumb {
     width: 80px;
     height: 56px;
@@ -122,8 +268,18 @@
     background: var(--surface-dark);
     border: 1px solid var(--glass-border);
     flex-shrink: 0;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    z-index: 2;
 }
 
+.alert-card:hover .event-thumb {
+    transform: scale(1.05);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    border-color: rgba(59, 130, 246, 0.3);
+}
+
+/* Event details */
 .event-details {
     flex: 1;
     display: flex;
@@ -131,12 +287,18 @@
     justify-content: center;
     gap: 4px;
     min-width: 0;
+    z-index: 2;
 }
 
 .event-type {
     font-weight: 600;
     font-size: 14px;
     color: var(--text-main);
+    transition: color 0.2s ease;
+}
+
+.alert-card:hover .event-type {
+    color: var(--primary);
 }
 
 .event-time {
@@ -160,9 +322,35 @@
     background: var(--danger-bg);
     color: var(--danger-text);
     border: 1px solid var(--danger-border);
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+.alert-card:hover .severity-badge {
+    transform: scale(1.05);
+    box-shadow: 0 0 12px var(--danger-glow);
 }
 
 .camera-id {
     font-size: 11px;
     color: var(--text-dimmed);
+    transition: all 0.2s ease;
+    opacity: 0.6;
+}
+
+.alert-card:hover .camera-id {
+    opacity: 1;
+    color: var(--text-secondary);
+}
+
+/* Light mode */
+[data-theme="light"] .alert-card {
+    background: rgba(255, 255, 255, 0.9);
+    border-color: rgba(0, 0, 0, 0.08);
+}
+
+[data-theme="light"] .alert-card:hover {
+    border-color: rgba(59, 130, 246, 0.3);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1),
+        0 0 20px rgba(59, 130, 246, 0.1);
 }
