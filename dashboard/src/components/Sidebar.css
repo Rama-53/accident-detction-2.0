@@ -87,7 +87,7 @@
         linear-gradient(135deg, #3b82f6, #8b5cf6, #ec4899) border-box;
     border: 2px solid transparent;
     border-radius: 14px;
-    color: white;
+    color: var(--text-main);
     font-weight: 600;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
@@ -110,7 +110,7 @@
 }
 
 .nav-btn.active .nav-icon-wrapper {
-    color: white;
+    color: var(--text-main);
 }
 
 .nav-icon-wrapper {

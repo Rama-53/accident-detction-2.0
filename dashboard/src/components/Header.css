@@ -7,7 +7,7 @@
     margin: 20px 20px 24px 20px;
     /* Added margin to compensate for removed parent padding */
     gap: 20px;
-    background: rgba(0, 0, 0, 0.2);
+    background: var(--glass-bg);
     padding: 10px 20px;
     /* Increased side padding slightly */
     border-radius: 16px;
