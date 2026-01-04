@@ -301,31 +301,45 @@ def main(zmq_host: str, zmq_port: int, mongo_uri: str, db_name: str, out_dir: st
                     state.current_video_writer.write(old_frame)
             
             # 3. DB Logic (Grouping)
-            latest_alert = accidents_col.find_one({"camera_id": camera_id}, sort=[("inserted_at", -1)])
+            # Fetch System Config for Delay
+            sys_conf = db.system_config.find_one({"config_id": "main"}) or {}
+            delay_minutes = sys_conf.get("alert_delay_minutes", 10)
+            delay_seconds = delay_minutes * 60
+            
+            # Fetch Sector ID
+            cam_doc = db.cameras.find_one({"camera_id": camera_id})
+            sector_id = cam_doc.get("sector_id") if cam_doc else None
+
+            # Determine grouping scope
+            # If we have a sector_id, group by Sector. Otherwise fall back to Camera.
+            group_query = {}
+            if sector_id:
+                group_query["sector_id"] = sector_id
+            else:
+                group_query["camera_id"] = camera_id
+            
+            latest_alert = accidents_col.find_one(group_query, sort=[("inserted_at", -1)])
+            
             should_group = False
             if latest_alert:
                 # Use last_updated if available, else inserted_at
                 last_ts = latest_alert.get("last_updated", latest_alert["inserted_at"])
-                # Ensure we have a datetime object
                 if isinstance(last_ts, str):
-                     try:
-                         # Attempt simplistic parse if it somehow became a string (unlikely with PyMongo)
-                         last_ts = datetime.fromisoformat(last_ts)
-                     except:
-                         last_ts = latest_alert["inserted_at"]
+                     try: last_ts = datetime.fromisoformat(last_ts)
+                     except: last_ts = latest_alert["inserted_at"]
 
-                # Calculate delta from the LAST activity, not the start
-                delta = (datetime.now(timezone.utc).replace(tzinfo=None) - last_ts).total_seconds()
+                # Calculate delta
+                # Ensure timezone awareness compatibility (assuming inserted_at is naive UTC as per build_mongo_doc)
+                now_ts = datetime.now(timezone.utc).replace(tzinfo=None)
+                delta = (now_ts - last_ts).total_seconds()
                 
-                # Rolling window: if new detection is within 10s of the LAST detection, group it.
-                if delta < 10.0:
+                # Check sliding window
+                if delta < delay_seconds:
                     should_group = True
             
             if should_group:
                 # Grouping
-                # VITAL: Do NOT update current_alert_id here if we are already recording for this ID.
-                # If we switch IDs mid-recording, the video will be attached to the wrong (or newer) alert.
-                # Actually, since we are grouping into 'latest_alert', we MUST ensure state.current_alert_id matches it.
+                # Ensure we track the correct ID for video updates
                 state.current_alert_id = latest_alert["_id"] 
                 
                 try:
@@ -336,7 +350,7 @@ def main(zmq_host: str, zmq_port: int, mongo_uri: str, db_name: str, out_dir: st
                             "$set": {"last_updated": datetime.now(timezone.utc).replace(tzinfo=None)}
                         }
                     )
-                    if verbose: print(f"[subscriber] GROUPED into {latest_alert['_id']}")
+                    if verbose: print(f"[subscriber] GROUPED into {latest_alert['_id']} (Sector: {sector_id}, Delay: {delay_minutes}m)")
                 except Exception as e:
                     print(f"MongoDB update error: {e}")
             else:

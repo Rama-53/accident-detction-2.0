@@ -257,7 +257,9 @@ class SystemConfig(BaseModel):
     email_alerts_enabled: Optional[bool] = None
     whatsapp_alerts_enabled: Optional[bool] = None
     admin_email: Optional[str] = None
+    admin_email: Optional[str] = None
     admin_phone: Optional[str] = None
+    alert_delay_minutes: Optional[int] = None
 
 SYSTEM_CONFIG: Dict[str, Any] = {
     "multi_detection_enabled": False,
@@ -265,7 +267,8 @@ SYSTEM_CONFIG: Dict[str, Any] = {
     "email_alerts_enabled": True,    # Default ON
     "whatsapp_alerts_enabled": True, # Default ON
     "admin_email": "",
-    "admin_phone": ""
+    "admin_phone": "",
+    "alert_delay_minutes": 10 # Default 10 minutes
 }
 
 # ... (Camera metadata logic remains here) ...
@@ -302,6 +305,9 @@ def update_system_config(config: SystemConfig):
         SYSTEM_CONFIG["admin_email"] = config.admin_email
     if config.admin_phone is not None:
         SYSTEM_CONFIG["admin_phone"] = config.admin_phone
+
+    if config.alert_delay_minutes is not None:
+        SYSTEM_CONFIG["alert_delay_minutes"] = config.alert_delay_minutes
     
     # Persist
     db.system_config.update_one(

@@ -20,6 +20,7 @@ export function Settings() {
         whatsapp_alerts_enabled: true,
         admin_email: "",
         admin_phone: "",
+        alert_delay_minutes: 10,
         system_name: "Accident Detection System 2.0"
     });
     const [loading, setLoading] = useState(false);
@@ -57,7 +58,8 @@ export function Settings() {
                     email_alerts_enabled: config.email_alerts_enabled,
                     whatsapp_alerts_enabled: config.whatsapp_alerts_enabled,
                     admin_email: config.admin_email,
-                    admin_phone: config.admin_phone
+                    admin_phone: config.admin_phone,
+                    alert_delay_minutes: config.alert_delay_minutes
                 })
             });
 
@@ -126,6 +128,30 @@ export function Settings() {
                                     />
                                     <span className="slider round"></span>
                                 </label>
+                            </div>
+                            <div className="setting-item">
+                                <div className="setting-info">
+                                    <label>Alert Grouping Delay</label>
+                                    <p>Minimum time between separate alerts for the same sector</p>
+                                </div>
+                                <select
+                                    className="premium-input-field"
+                                    value={config.alert_delay_minutes ?? 10}
+                                    onChange={e => setConfig({ ...config, alert_delay_minutes: parseInt(e.target.value) })}
+                                    style={{
+                                        background: 'rgba(255,255,255,0.05)',
+                                        border: '1px solid rgba(255,255,255,0.1)',
+                                        color: 'white',
+                                        padding: '8px',
+                                        borderRadius: '4px',
+                                        width: '120px'
+                                    }}
+                                >
+                                    <option value={0}>No Delay</option>
+                                    <option value={5}>5 Minutes</option>
+                                    <option value={10}>10 Minutes</option>
+                                    <option value={30}>30 Minutes</option>
+                                </select>
                             </div>
                         </div>
 
