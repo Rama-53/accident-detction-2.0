@@ -60,6 +60,104 @@
     }
 }
 
+/* ========== FUTURISTIC ANIMATIONS ========== */
+
+@keyframes neonPulse {
+
+    0%,
+    100% {
+        box-shadow: 0 0 5px var(--neon-cyan-glow),
+            0 0 20px var(--neon-cyan-glow),
+            inset 0 0 10px rgba(0, 245, 255, 0.1);
+    }
+
+    50% {
+        box-shadow: 0 0 10px var(--neon-cyan-glow),
+            0 0 40px var(--neon-cyan-glow),
+            0 0 60px var(--neon-cyan-glow),
+            inset 0 0 20px rgba(0, 245, 255, 0.15);
+    }
+}
+
+@keyframes neonPulseRed {
+
+    0%,
+    100% {
+        box-shadow: 0 0 5px var(--neon-red-glow),
+            0 0 20px var(--neon-red-glow);
+    }
+
+    50% {
+        box-shadow: 0 0 10px var(--neon-red-glow),
+            0 0 40px var(--neon-red-glow),
+            0 0 60px var(--neon-red-glow);
+    }
+}
+
+@keyframes scanLine {
+    0% {
+        transform: translateY(-100%);
+        opacity: 1;
+    }
+
+    100% {
+        transform: translateY(100%);
+        opacity: 0.3;
+    }
+}
+
+@keyframes borderGlow {
+
+    0%,
+    100% {
+        border-color: rgba(0, 245, 255, 0.3);
+    }
+
+    50% {
+        border-color: rgba(0, 245, 255, 0.8);
+    }
+}
+
+@keyframes ripple {
+    0% {
+        transform: scale(0);
+        opacity: 1;
+    }
+
+    100% {
+        transform: scale(4);
+        opacity: 0;
+    }
+}
+
+@keyframes statusPulse {
+
+    0%,
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+
+    50% {
+        transform: scale(1.2);
+        opacity: 0.7;
+    }
+}
+
+@keyframes gradientShift {
+    0% {
+        background-position: 0% 50%;
+    }
+
+    50% {
+        background-position: 100% 50%;
+    }
+
+    100% {
+        background-position: 0% 50%;
+    }
+}
+
 .animate-fade-in {
     animation: fadeIn 0.4s ease-out forwards;
 }
@@ -70,4 +168,16 @@
 
 .animate-scale-in {
     animation: scaleIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+.animate-neon-pulse {
+    animation: neonPulse 2s ease-in-out infinite;
+}
+
+.animate-neon-pulse-red {
+    animation: neonPulseRed 1.5s ease-in-out infinite;
+}
+
+.animate-status-pulse {
+    animation: statusPulse 2s ease-in-out infinite;
 }

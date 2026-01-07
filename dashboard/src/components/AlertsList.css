@@ -168,7 +168,8 @@
     flex-shrink: 0;
     gap: 14px;
     padding: 14px;
-    background: rgba(30, 30, 46, 0.6);
+    padding-left: 18px;
+    background: rgba(20, 25, 40, 0.7);
     backdrop-filter: blur(12px);
     border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 12px;
@@ -178,6 +179,54 @@
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
     animation: slideInAlert 0.4s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+}
+
+/* Severity Indicator Bar */
+.severity-indicator {
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background: var(--neon-orange);
+    transition: all 0.3s ease;
+}
+
+.alert-card.severity-high .severity-indicator {
+    background: var(--neon-red);
+    box-shadow: 0 0 12px var(--neon-red-glow),
+        0 0 24px var(--neon-red-glow);
+}
+
+.alert-card.severity-medium .severity-indicator {
+    background: var(--neon-orange);
+    box-shadow: 0 0 10px var(--neon-orange-glow);
+}
+
+.alert-card.severity-low .severity-indicator {
+    background: var(--severity-low);
+    box-shadow: 0 0 8px rgba(253, 224, 71, 0.3);
+}
+
+/* Critical alert pulse animation */
+.alert-card.severity-high {
+    animation: slideInAlert 0.4s cubic-bezier(0.16, 1, 0.3, 1) backwards,
+        criticalPulse 2s ease-in-out infinite 0.5s;
+}
+
+@keyframes criticalPulse {
+
+    0%,
+    100% {
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2),
+            inset 0 0 0 1px rgba(255, 51, 102, 0.1);
+    }
+
+    50% {
+        box-shadow: 0 4px 20px rgba(255, 51, 102, 0.3),
+            0 0 30px rgba(255, 51, 102, 0.15),
+            inset 0 0 0 1px rgba(255, 51, 102, 0.3);
+    }
 }
 
 @keyframes slideInAlert {
@@ -216,11 +265,22 @@
 /* Hover effect - AI gradient like active nav tab */
 .alert-card:hover {
     transform: translateY(-2px) scale(1.01);
-    background: linear-gradient(rgba(30, 30, 46, 0.6), rgba(30, 30, 46, 0.6)) padding-box,
+    background: linear-gradient(rgba(25, 30, 50, 0.8), rgba(25, 30, 50, 0.8)) padding-box,
         linear-gradient(135deg, #3b82f6, #8b5cf6, #ec4899) border-box;
     border: 2px solid transparent;
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3),
         0 0 20px rgba(139, 92, 246, 0.3);
+}
+
+/* Severity-specific hover glow */
+.alert-card.severity-high:hover {
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3),
+        0 0 30px var(--neon-red-glow);
+}
+
+.alert-card.severity-medium:hover {
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3),
+        0 0 25px var(--neon-orange-glow);
 }
 
 /* Glow effect on hover */
@@ -326,9 +386,28 @@
     position: relative;
 }
 
+/* Severity-specific badge styles */
+.severity-badge.severity-high {
+    background: rgba(255, 51, 102, 0.2);
+    color: var(--neon-red);
+    border-color: rgba(255, 51, 102, 0.4);
+    box-shadow: 0 0 8px rgba(255, 51, 102, 0.2);
+}
+
+.severity-badge.severity-medium {
+    background: rgba(255, 159, 10, 0.2);
+    color: var(--neon-orange);
+    border-color: rgba(255, 159, 10, 0.4);
+}
+
+.severity-badge.severity-low {
+    background: rgba(253, 224, 71, 0.15);
+    color: var(--severity-low);
+    border-color: rgba(253, 224, 71, 0.3);
+}
+
 .alert-card:hover .severity-badge {
     transform: scale(1.05);
-    box-shadow: 0 0 12px var(--danger-glow);
 }
 
 .camera-id {

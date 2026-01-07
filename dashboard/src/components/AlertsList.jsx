@@ -39,10 +39,12 @@ export function AlertsList() {
                 {events.map((e, index) => (
                     <div
                         key={e.id}
-                        className="alert-card"
+                        className={`alert-card severity-${(e.severity || 'medium').toLowerCase()}`}
                         onClick={() => setActiveEvent(e)}
                         style={{ animationDelay: `${index * 0.05}s` }}
                     >
+                        {/* Severity indicator bar */}
+                        <div className="severity-indicator"></div>
                         {e.snapshot_id && (
                             <img
                                 src={`${BACKEND_URL}/snapshot/${e.snapshot_id}`}
@@ -55,7 +57,9 @@ export function AlertsList() {
                             <div className="event-type">{e.type || 'Accident'}</div>
                             <div className="event-time">{new Date(e.time * 1000).toLocaleString()}</div>
                             <div className="event-meta">
-                                <span className="severity-badge">{e.severity}</span>
+                                <span className={`severity-badge severity-${(e.severity || 'medium').toLowerCase()}`}>
+                                    {e.severity || 'Medium'}
+                                </span>
                                 <span className="camera-id">{e.camera_name || e.camera_id}</span>
                             </div>
                         </div>
