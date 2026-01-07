@@ -1,9 +1,16 @@
 // src/components/Settings.jsx
 import { useState, useEffect } from 'react';
-import { Save, Trash2, Server, Shield, Activity, Users } from 'lucide-react';
+import { Save, Trash2, Server, Shield, Activity, Users, Volume2 } from 'lucide-react';
 import { BACKEND_URL } from '../config';
 import { ResponderManager } from './ResponderManager';
 import { useSystem } from '../context/SystemContext';
+import {
+    setAudioEnabled,
+    isAudioAlertEnabled,
+    setAudioVolume,
+    getAudioVolume,
+    playTestSound
+} from '../utils/audioAlert';
 import './Settings.css';
 
 export function Settings() {
@@ -25,6 +32,10 @@ export function Settings() {
     });
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState(null);
+
+    // Sound settings state
+    const [soundEnabled, setSoundEnabled] = useState(isAudioAlertEnabled());
+    const [soundVolume, setSoundVolume] = useState(getAudioVolume());
 
     useEffect(() => {
         // Fetch full system config on mount
@@ -152,6 +163,62 @@ export function Settings() {
                                     <option value={10}>10 Minutes</option>
                                     <option value={30}>30 Minutes</option>
                                 </select>
+                            </div>
+                        </div>
+
+                        {/* Sound Settings */}
+                        <div className="settings-section">
+                            <h3><Volume2 size={16} /> Sound Alerts</h3>
+                            <div className="setting-item">
+                                <div className="setting-info">
+                                    <label>Enable Alert Sounds</label>
+                                    <p>Play audio notification when accidents are detected</p>
+                                </div>
+                                <label className="switch">
+                                    <input
+                                        type="checkbox"
+                                        checked={soundEnabled}
+                                        onChange={e => {
+                                            setSoundEnabled(e.target.checked);
+                                            setAudioEnabled(e.target.checked);
+                                        }}
+                                    />
+                                    <span className="slider round"></span>
+                                </label>
+                            </div>
+                            <div className="setting-item">
+                                <div className="setting-info">
+                                    <label>Volume: {Math.round(soundVolume * 100)}%</label>
+                                    <p>Adjust the volume of alert sounds</p>
+                                </div>
+                                <div className="volume-control">
+                                    <input
+                                        type="range"
+                                        min="0"
+                                        max="100"
+                                        value={soundVolume * 100}
+                                        onChange={e => {
+                                            const vol = e.target.value / 100;
+                                            setSoundVolume(vol);
+                                            setAudioVolume(vol);
+                                        }}
+                                        className="volume-slider"
+                                        disabled={!soundEnabled}
+                                    />
+                                </div>
+                            </div>
+                            <div className="setting-item">
+                                <div className="setting-info">
+                                    <label>Test Sound</label>
+                                    <p>Preview the alert sound at current volume</p>
+                                </div>
+                                <button
+                                    className="btn-secondary"
+                                    onClick={playTestSound}
+                                    disabled={!soundEnabled}
+                                >
+                                    🔊 Play Test
+                                </button>
                             </div>
                         </div>
 

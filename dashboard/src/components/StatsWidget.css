@@ -1,0 +1,122 @@
+/* src/components/StatsWidget.css */
+
+.stats-widget {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 20px;
+}
+
+.stat-card {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 18px 20px;
+    background: var(--glass-bg);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--glass-border);
+    border-radius: 16px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    animation: fadeInUp 0.5s ease-out forwards;
+    opacity: 0;
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.stat-card:hover {
+    border-color: var(--stat-color);
+    box-shadow: 0 0 20px var(--stat-bg),
+        0 4px 20px rgba(0, 0, 0, 0.2);
+    transform: translateY(-2px);
+}
+
+.stat-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    background: var(--stat-bg);
+    color: var(--stat-color);
+    flex-shrink: 0;
+    transition: all 0.3s ease;
+}
+
+.stat-card:hover .stat-icon {
+    box-shadow: 0 0 15px var(--stat-bg);
+    transform: scale(1.05);
+}
+
+.stat-content {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.stat-number {
+    display: flex;
+    align-items: baseline;
+    gap: 4px;
+}
+
+.stat-value {
+    font-size: 28px;
+    font-weight: 700;
+    font-family: 'Outfit', sans-serif;
+    color: var(--text-main);
+    font-variant-numeric: tabular-nums;
+}
+
+.stat-suffix {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-muted);
+}
+
+.stat-label {
+    font-size: 12px;
+    color: var(--text-dimmed);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+/* Responsive */
+@media (max-width: 1200px) {
+    .stats-widget {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 600px) {
+    .stats-widget {
+        grid-template-columns: 1fr;
+    }
+
+    .stat-card {
+        padding: 14px 16px;
+    }
+
+    .stat-value {
+        font-size: 24px;
+    }
+}
+
+/* Light mode */
+[data-theme="light"] .stat-card {
+    background: rgba(255, 255, 255, 0.8);
+}
+
+[data-theme="light"] .stat-icon {
+    background: var(--stat-bg);
+}

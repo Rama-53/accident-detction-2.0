@@ -58,20 +58,21 @@
 }
 
 .header-title {
-    font-size: 10px;
-    color: #888;
-    letter-spacing: 1px;
+    font-size: 11px;
+    color: #aaa;
+    letter-spacing: 1.2px;
     font-weight: bold;
+    text-shadow: 0 0 8px rgba(255, 183, 0, 0.3);
 }
 
 /* Radio Stack Layout - Responsive Grid */
 .radio-stack {
     display: flex;
     flex-wrap: wrap;
-    /* Grid wrap */
-    gap: 4px;
+    justify-content: center;
+    gap: 6px;
     background: #111;
-    padding: 4px;
+    padding: 6px;
     border-radius: 2px;
     box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.8);
 }

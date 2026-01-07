@@ -84,8 +84,8 @@ export function SystemProvider({ children }) {
 
         setToasts(prev => [...prev, newToast]);
 
-        // Play audio alert
-        playAlertSound();
+        // Play audio alert with severity-based sound
+        playAlertSound(event.severity || 'medium');
     }, []);
 
     const removeToast = useCallback((toastId) => {

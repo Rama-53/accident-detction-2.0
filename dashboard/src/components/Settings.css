@@ -242,3 +242,64 @@ input:checked+.slider:before {
     background: rgba(255, 69, 58, 0.1);
     color: #ff453a;
 }
+
+/* Volume Control */
+.volume-control {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.volume-slider {
+    width: 150px;
+    height: 6px;
+    border-radius: 3px;
+    background: var(--surface-card);
+    outline: none;
+    cursor: pointer;
+    -webkit-appearance: none;
+    appearance: none;
+}
+
+.volume-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--neon-cyan);
+    box-shadow: 0 0 10px var(--neon-cyan-glow);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.volume-slider::-webkit-slider-thumb:hover {
+    transform: scale(1.1);
+    box-shadow: 0 0 15px var(--neon-cyan-glow);
+}
+
+.volume-slider::-moz-range-thumb {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--neon-cyan);
+    box-shadow: 0 0 10px var(--neon-cyan-glow);
+    cursor: pointer;
+    border: none;
+}
+
+.volume-slider:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.volume-slider:disabled::-webkit-slider-thumb {
+    background: var(--text-dimmed);
+    box-shadow: none;
+}
+
+/* Light mode */
+[data-theme="light"] .volume-slider::-webkit-slider-thumb {
+    background: var(--primary);
+    box-shadow: 0 0 10px var(--primary-glow);
+}

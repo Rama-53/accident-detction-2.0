@@ -288,6 +288,70 @@ except Exception as e:
 def get_system_config():
     return SYSTEM_CONFIG
 
+# Track API startup time for uptime calculation
+import time as _time
+import psutil
+API_START_TIME = _time.time()
+
+@app.get("/system/stats")
+def get_system_stats():
+    """
+    Return real-time system statistics for the dashboard header.
+    Includes CPU, memory, uptime, recording status, and detector health.
+    """
+    import datetime
+    
+    # CPU and Memory
+    cpu_percent = psutil.cpu_percent(interval=0.1)
+    memory = psutil.virtual_memory()
+    memory_percent = memory.percent
+    
+    # Uptime
+    uptime_seconds = int(_time.time() - API_START_TIME)
+    uptime_str = str(datetime.timedelta(seconds=uptime_seconds))
+    
+    # Recording status from config
+    recording_active = SYSTEM_CONFIG.get("video_recording_enabled", False)
+    
+    # Check if detector is reachable
+    detector_online = False
+    try:
+        import urllib.request
+        req = urllib.request.Request("http://127.0.0.1:5001/stream.mjpg", method='HEAD')
+        req.timeout = 1
+        urllib.request.urlopen(req, timeout=1)
+        detector_online = True
+    except:
+        pass
+    
+    # Count active detections (cameras with detection_enabled)
+    active_detections = 0
+    try:
+        active_detections = db.cameras.count_documents({"detection_enabled": True})
+    except:
+        pass
+    
+    # Last event time
+    last_event_time = None
+    try:
+        last_event = db.accidents.find_one(sort=[("inserted_at", -1)])
+        if last_event and last_event.get("inserted_at"):
+            last_event_time = last_event["inserted_at"].timestamp() if hasattr(last_event["inserted_at"], 'timestamp') else last_event["inserted_at"]
+    except:
+        pass
+    
+    return {
+        "cpu_percent": round(cpu_percent, 1),
+        "memory_percent": round(memory_percent, 1),
+        "uptime_seconds": uptime_seconds,
+        "uptime_str": uptime_str,
+        "recording_active": recording_active,
+        "detector_online": detector_online,
+        "active_detections": active_detections,
+        "last_event_time": last_event_time,
+        "timestamp": _time.time()
+    }
+
 @app.post("/system/config")
 def update_system_config(config: SystemConfig):
     if config.multi_detection_enabled is not None:

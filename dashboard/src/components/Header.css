@@ -203,3 +203,111 @@
     color: #f97316;
     filter: none;
 }
+
+/* ========== RECORDING INDICATOR ========== */
+
+.status-item.recording {
+    color: var(--neon-red);
+    animation: recordingPulse 1s ease-in-out infinite;
+}
+
+.status-item.recording svg {
+    color: var(--neon-red);
+    filter: drop-shadow(0 0 6px var(--neon-red-glow));
+}
+
+.status-item.recording .status-label {
+    color: var(--neon-red);
+    font-weight: 700;
+    letter-spacing: 0.05em;
+}
+
+@keyframes recordingPulse {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.5;
+    }
+}
+
+/* ========== OFFLINE STATE ========== */
+
+.status-item.offline {
+    color: var(--neon-red);
+}
+
+.status-item.offline .offline-icon {
+    color: var(--neon-red);
+    filter: drop-shadow(0 0 4px var(--neon-red-glow));
+    animation: offlineBlink 2s ease-in-out infinite;
+}
+
+.status-item.offline .status-label {
+    color: var(--neon-red);
+}
+
+@keyframes offlineBlink {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.3;
+    }
+}
+
+/* ========== COMPACT STATS ITEMS ========== */
+
+.status-item.compact {
+    gap: 4px;
+}
+
+.status-item.compact svg {
+    color: var(--text-dimmed);
+    filter: none;
+}
+
+.status-item.compact .status-value {
+    font-size: 11px;
+    color: var(--text-muted);
+    font-weight: 500;
+}
+
+.status-item.sync {
+    gap: 4px;
+}
+
+.status-item.sync svg {
+    color: var(--text-dimmed);
+    filter: none;
+}
+
+.status-item.sync .status-label {
+    font-size: 11px;
+}
+
+/* ========== LIGHT MODE ADDITIONS ========== */
+
+[data-theme="light"] .status-item.recording svg {
+    color: #dc2626;
+    filter: none;
+}
+
+[data-theme="light"] .status-item.recording .status-label {
+    color: #dc2626;
+}
+
+[data-theme="light"] .status-item.offline .offline-icon {
+    color: #dc2626;
+    filter: none;
+}
+
+[data-theme="light"] .status-item.offline .status-label {
+    color: #dc2626;
+}

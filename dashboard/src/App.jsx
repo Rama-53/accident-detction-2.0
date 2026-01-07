@@ -4,6 +4,9 @@ import "./App.css";
 // Context
 import { SystemProvider, useSystem } from "./context/SystemContext";
 
+// Hooks
+import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
+
 // Components
 import { Layout } from "./components/Layout";
 import { Dashboard } from "./components/Dashboard";
@@ -19,8 +22,23 @@ function AppContent() {
   const {
     activeTab,
     showIntro, setShowIntro,
-    activeEvent, setActiveEvent
+    activeEvent, setActiveEvent,
+    events,
+    toggleTheme
   } = useSystem();
+
+  // Global keyboard shortcuts
+  useKeyboardShortcuts({
+    onEscape: () => {
+      if (activeEvent) setActiveEvent(null);
+      if (showIntro) setShowIntro(false);
+    },
+    onToggleTheme: toggleTheme,
+    onNavigatePrev: (event) => setActiveEvent(event),
+    onNavigateNext: (event) => setActiveEvent(event),
+    activeEvent,
+    events
+  });
 
   return (
     <>
@@ -59,3 +77,4 @@ function App() {
 }
 
 export default App;
+

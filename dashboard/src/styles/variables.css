@@ -87,54 +87,72 @@
 }
 
 [data-theme="light"] {
-    /* Colors */
+    /* Colors - Premium Light Base */
     --bg-app: #f8fafc;
-    --bg-sidebar: rgba(255, 255, 255, 0.8);
+    --bg-sidebar: rgba(255, 255, 255, 0.95);
 
-    /* Gradients */
-    --gradient-app: radial-gradient(circle at 50% 0%, #f1f5f9 0%, #e2e8f0 100%);
+    /* Gradients - Softer, more elegant */
+    --gradient-app: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 50%, #f1f5f9 100%);
     --gradient-primary: linear-gradient(135deg, #2563eb 0%, #4f46e5 100%);
     --gradient-brand: linear-gradient(135deg, #3b82f6 0%, #6366f1 100%);
 
-    /* Text */
+    /* Text - Good contrast */
     --text-main: #0f172a;
-    --text-secondary: #334155;
-    --text-muted: #64748b;
-    --text-dimmed: #94a3b8;
+    --text-secondary: #1e293b;
+    --text-muted: #475569;
+    --text-dimmed: #64748b;
 
-    /* Borders & Glass */
-    --glass-bg: rgba(255, 255, 255, 0.6);
-    --glass-border: rgba(148, 163, 184, 0.2);
-    --glass-border-hover: rgba(148, 163, 184, 0.4);
-    --surface-card: rgba(255, 255, 255, 0.5);
-    --surface-card-hover: rgba(255, 255, 255, 0.8);
-    --surface-dark: rgba(241, 245, 249, 0.8);
-    --surface-input: rgba(255, 255, 255, 0.9);
+    /* Borders & Glass - Clean glassmorphism for light */
+    --glass-bg: rgba(255, 255, 255, 0.8);
+    --glass-border: rgba(0, 0, 0, 0.08);
+    --glass-border-hover: rgba(37, 99, 235, 0.3);
+    --surface-card: rgba(255, 255, 255, 0.9);
+    --surface-card-hover: rgba(255, 255, 255, 1);
+    --surface-dark: rgba(241, 245, 249, 1);
+    --surface-input: rgba(255, 255, 255, 1);
 
-    /* Semantic */
+    /* Semantic - Vibrant but not harsh */
     --primary: #2563eb;
-    --primary-hover: #3b82f6;
+    --primary-hover: #1d4ed8;
     --primary-bg: rgba(37, 99, 235, 0.1);
-    --primary-bg-hover: rgba(37, 99, 235, 0.2);
-    --primary-glow: rgba(37, 99, 235, 0.3);
+    --primary-bg-hover: rgba(37, 99, 235, 0.15);
+    --primary-glow: rgba(37, 99, 235, 0.25);
 
     --accent: #6366f1;
     --accent-bg: rgba(99, 102, 241, 0.1);
 
     --danger-bg: rgba(239, 68, 68, 0.1);
-    --danger-text: #b91c1c;
-    --danger-border: rgba(239, 68, 68, 0.2);
+    --danger-text: #dc2626;
+    --danger-border: rgba(239, 68, 68, 0.25);
 
     --success-bg: rgba(22, 163, 74, 0.1);
-    --success-text: #15803d;
-    --success-border: rgba(22, 163, 74, 0.2);
+    --success-text: #16a34a;
+    --success-border: rgba(22, 163, 74, 0.25);
 
     --warning-bg: rgba(234, 179, 8, 0.1);
-    --warning-text: #a16207;
-    --warning-text: #a16207;
-    --warning-border: rgba(234, 179, 8, 0.2);
+    --warning-text: #ca8a04;
+    --warning-border: rgba(234, 179, 8, 0.25);
+
+    /* ========== LIGHT MODE ACCENTS ========== */
+    --neon-cyan: #0891b2;
+    --neon-cyan-glow: rgba(8, 145, 178, 0.25);
+    --neon-red: #dc2626;
+    --neon-red-glow: rgba(220, 38, 38, 0.25);
+    --neon-green: #16a34a;
+    --neon-green-glow: rgba(22, 163, 74, 0.25);
+    --neon-purple: #7c3aed;
+    --neon-purple-glow: rgba(124, 58, 237, 0.25);
+    --neon-orange: #ea580c;
+    --neon-orange-glow: rgba(234, 88, 12, 0.25);
+
+    /* Severity Colors for Light Mode */
+    --severity-high: #dc2626;
+    --severity-high-glow: 0 2px 8px rgba(220, 38, 38, 0.3);
+    --severity-medium: #ea580c;
+    --severity-medium-glow: 0 2px 8px rgba(234, 88, 12, 0.3);
+    --severity-low: #ca8a04;
+    --severity-low-glow: 0 2px 6px rgba(202, 138, 4, 0.2);
 
     /* Animation Colors */
-    --analyze-sweep: rgba(99, 102, 241, 0.8);
-    /* Indigo/Violet for Light Mode */
+    --analyze-sweep: rgba(99, 102, 241, 0.6);
 }
