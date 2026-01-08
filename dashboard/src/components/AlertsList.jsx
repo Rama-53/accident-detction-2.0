@@ -5,7 +5,7 @@ import { useSystem } from '../context/SystemContext';
 import './AlertsList.css';
 
 export function AlertsList() {
-    const { events, setActiveEvent, clearAllAlerts } = useSystem();
+    const { events, setActiveEvent } = useSystem();
 
     return (
         <div className="glass-panel alerts-panel">
@@ -17,16 +17,6 @@ export function AlertsList() {
                         <span className="alert-count">{events.length}</span>
                     )}
                 </div>
-                <button
-                    className="btn-clear"
-                    onClick={() => {
-                        if (confirm('Clear all alerts?')) {
-                            clearAllAlerts();
-                        }
-                    }}
-                >
-                    Clear
-                </button>
             </div>
 
             <div className="event-list">

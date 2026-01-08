@@ -1,7 +1,7 @@
 // src/hooks/useSystemData.js
 // Centralizes fetching of system status, events, cameras, and snapshots.
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { BACKEND_URL } from '../config';
 
 export function useSystemData(selectedCamera, filterStartTime, filterEndTime) {
@@ -9,6 +9,9 @@ export function useSystemData(selectedCamera, filterStartTime, filterEndTime) {
     const [events, setEvents] = useState([]);
     const [cameras, setCameras] = useState([]);
     const [snapshots, setSnapshots] = useState([]);
+
+    // Track when alerts were "cleared" - only show alerts newer than this timestamp
+    const [clearedAtTimestamp, setClearedAtTimestamp] = useState(null);
 
     // Fetch backend status
     useEffect(() => {
@@ -45,7 +48,14 @@ export function useSystemData(selectedCamera, filterStartTime, filterEndTime) {
                 }
                 const res = await fetch(`${BACKEND_URL}/events?${params.toString()}`);
                 const data = await res.json();
-                setEvents(data);
+
+                // Filter out events older than the cleared timestamp
+                if (clearedAtTimestamp) {
+                    const filtered = data.filter(e => e.time > clearedAtTimestamp);
+                    setEvents(filtered);
+                } else {
+                    setEvents(data);
+                }
             } catch (err) {
                 console.error('Error fetching events:', err);
             }
@@ -53,7 +63,7 @@ export function useSystemData(selectedCamera, filterStartTime, filterEndTime) {
         fetchEvents();
         const id = setInterval(fetchEvents, 500);
         return () => clearInterval(id);
-    }, [selectedCamera, filterStartTime, filterEndTime]);
+    }, [selectedCamera, filterStartTime, filterEndTime, clearedAtTimestamp]);
 
     // Fetch available cameras
     useEffect(() => {
@@ -87,14 +97,23 @@ export function useSystemData(selectedCamera, filterStartTime, filterEndTime) {
         return () => clearInterval(id);
     }, []);
 
+    // Clear displayed alerts (sets timestamp filter, does NOT delete from DB)
+    const clearDisplayedAlerts = useCallback(() => {
+        console.log('[useSystemData] Clearing displayed alerts');
+        setClearedAtTimestamp(Date.now() / 1000); // Current time in seconds
+    }, []);
+
+    // Actually delete all alerts from database
     const clearAllAlerts = useCallback(async () => {
         try {
             await fetch(`${BACKEND_URL}/accidents`, { method: 'DELETE' });
+            setClearedAtTimestamp(null); // Reset filter since DB is empty
             setEvents([]);
         } catch (err) {
             console.error('Error clearing alerts:', err);
         }
     }, []);
 
-    return { status, events, setEvents, cameras, snapshots, clearAllAlerts };
+    return { status, events, setEvents, cameras, snapshots, clearDisplayedAlerts, clearAllAlerts };
 }
+

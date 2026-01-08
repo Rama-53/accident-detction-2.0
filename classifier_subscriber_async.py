@@ -134,9 +134,25 @@ def background_verifier(verification_queue, mongo_uri, db_name, classifier, verb
                 print(f"[verifier]   Confidence: {hybrid_result.get('confidence'):.2f}")
             
             # Update MongoDB with verification results
+            # Convert numpy types to Python native types for MongoDB
+            def convert_numpy(obj):
+                if isinstance(obj, (np.floating, np.float32, np.float64)):
+                    return float(obj)
+                elif isinstance(obj, (np.integer, np.int32, np.int64)):
+                    return int(obj)
+                elif isinstance(obj, np.ndarray):
+                    return obj.tolist()
+                elif isinstance(obj, dict):
+                    return {k: convert_numpy(v) for k, v in obj.items()}
+                elif isinstance(obj, list):
+                    return [convert_numpy(i) for i in obj]
+                return obj
+            
+            clean_result = convert_numpy(hybrid_result)
+            
             update_doc = {
                 "verification_status": "verified",
-                "verification_result": hybrid_result,
+                "verification_result": clean_result,
                 "verification_timestamp": datetime.now(timezone.utc).replace(tzinfo=None),
             }
             
@@ -348,26 +364,51 @@ def main(zmq_host: str, zmq_port: int, mongo_uri: str, db_name: str, out_dir: st
                 else:
                     severity = "low"
                 
-                for i, crop_b64 in enumerate(crops_b64):
+                # If detector sent crops, use those
+                if crops_b64:
+                    for i, crop_b64 in enumerate(crops_b64):
+                        try:
+                            crop_img = decode_b64_to_pil(crop_b64)
+                            timestamp = datetime.now(timezone.utc).replace(tzinfo=None).strftime("%Y%m%dT%H%M%S%f")[:-3]
+                            fname = f"{camera_id}_f{frame_idx}_crop{i}_{timestamp}.jpg"
+                            fpath = out_dir / fname
+                            save_pil_to_path(crop_img, fpath)
+                            
+                            crops_meta.append({
+                                "file": str(fpath),
+                                "width": crop_img.width,
+                                "height": crop_img.height,
+                                "prediction": {
+                                    "label": primary_result.get('label', 'accident') if primary_result else 'accident',
+                                    "confidence": confidence,
+                                    "severity": severity
+                                }
+                            })
+                        except Exception:
+                            pass
+                
+                # If no crops from detector, save the full frame as snapshot
+                elif full_frame_pil:
                     try:
-                        crop_img = decode_b64_to_pil(crop_b64)
                         timestamp = datetime.now(timezone.utc).replace(tzinfo=None).strftime("%Y%m%dT%H%M%S%f")[:-3]
-                        fname = f"{camera_id}_f{frame_idx}_crop{i}_{timestamp}.jpg"
+                        fname = f"{camera_id}_f{frame_idx}_fullframe_{timestamp}.jpg"
                         fpath = out_dir / fname
-                        save_pil_to_path(crop_img, fpath)
+                        save_pil_to_path(full_frame_pil, fpath)
                         
                         crops_meta.append({
                             "file": str(fpath),
-                            "width": crop_img.width,
-                            "height": crop_img.height,
+                            "width": full_frame_pil.width,
+                            "height": full_frame_pil.height,
                             "prediction": {
                                 "label": primary_result.get('label', 'accident') if primary_result else 'accident',
                                 "confidence": confidence,
                                 "severity": severity
                             }
                         })
-                    except Exception:
-                        pass
+                        if verbose:
+                            print(f"[subscriber] Saved full frame as snapshot: {fname}")
+                    except Exception as e:
+                        print(f"[subscriber] Failed to save full frame: {e}")
             
             # Update sliding window
             state.update_history(1 if is_accident_scene else 0)
@@ -437,7 +478,13 @@ def main(zmq_host: str, zmq_port: int, mongo_uri: str, db_name: str, out_dir: st
                 except Exception as e:
                     print(f"MongoDB update error: {e}")
             else:
-                # New Alert - Use primary result for immediate classification
+                # New Alert - Skip if no crops (prevents phantom alerts)
+                if not crops_meta:
+                    if verbose and frame_idx % 30 == 0:
+                        print(f"[subscriber] Skipping alert - no crop data available")
+                    continue
+                
+                # Use primary result for immediate classification
                 doc = build_mongo_doc(
                     camera_id, frame_idx, event.get("ts_utc", time.time()), 
                     event, crops_meta, primary_result
@@ -458,6 +505,116 @@ def main(zmq_host: str, zmq_port: int, mongo_uri: str, db_name: str, out_dir: st
                 state.current_alert_id = res.inserted_id
                 if verbose:
                     print(f"[subscriber] NEW ALERT {res.inserted_id} (UNVERIFIED)")
+                
+                # --- SEND EMAIL NOTIFICATIONS ---
+                if messaging_svc:
+                    try:
+                        # Check if email alerts are enabled in system config
+                        sys_conf = db.system_config.find_one({"config_id": "main"})
+                        email_enabled = sys_conf.get("email_alerts_enabled", False) if sys_conf else False
+                        
+                        if email_enabled:
+                            # Get sector_id from the alert document
+                            sector_id = doc.get("sector_id")
+                            
+                            # Fetch responders for this sector from MongoDB
+                            responders = []
+                            if sector_id:
+                                try:
+                                    # Query responders collection for matching sector_id with valid email
+                                    responder_docs = list(db.responders.find({
+                                        "sector_id": sector_id,
+                                        "email": {"$exists": True, "$ne": "", "$ne": None}
+                                    }))
+                                    
+                                    responders = [
+                                        {
+                                            "name": r.get("name", ""),
+                                            "email": r.get("email", ""),
+                                            "phone": r.get("phone", ""),
+                                            "role": r.get("role", "")
+                                        }
+                                        for r in responder_docs
+                                        if r.get("email") and str(r.get("email")).strip()
+                                    ]
+                                except Exception as e:
+                                    if verbose:
+                                        print(f"[subscriber] Could not load responders from DB: {e}")
+                            
+                            # Build email message with metadata
+                            camera_name = doc.get("camera_name", camera_id)
+                            location = doc.get("location", "Unknown")
+                            location_lat = doc.get("location_lat")
+                            location_lng = doc.get("location_lng")
+                            severity = "UNKNOWN"
+                            
+                            # Extract severity from crops_meta
+                            if crops_meta and len(crops_meta) > 0:
+                                first_crop = crops_meta[0]
+                                if "prediction" in first_crop:
+                                    severity = first_crop["prediction"].get("severity", "UNKNOWN").upper()
+                            
+                            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                            
+                            # Message body as dict for rich formatting
+                            message_body = {
+                                "message": f"An accident has been detected at {camera_name}.",
+                                "severity": severity,
+                                "time": timestamp,
+                                "camera": camera_name,
+                                "location": location,
+                                "location_lat": location_lat,
+                                "location_lng": location_lng
+                            }
+                            
+                            subject = f"🚨 Accident Alert - {severity.upper()} Severity"
+                            
+                            # Get the first snapshot image path for attachment
+                            attachment_path = None
+                            if crops_meta and len(crops_meta) > 0:
+                                attachment_path = crops_meta[0].get("file")
+                            
+                            # Send to each responder
+                            if responders:
+                                for responder in responders:
+                                    contact_info = {
+                                        "email": responder.get("email"),
+                                        "phone": responder.get("phone", "")
+                                    }
+                                    
+                                    messaging_svc.send_alert(
+                                        contact_info=contact_info,
+                                        message_body=message_body,
+                                        subject=subject,
+                                        attachment_path=attachment_path
+                                    )
+                                
+                                if verbose:
+                                    print(f"[subscriber] 📧 Email alerts queued for {len(responders)} responder(s) in sector {sector_id}")
+                            else:
+                                # Send to admin email if no sector responders found
+                                admin_email = sys_conf.get("admin_email", "") if sys_conf else ""
+                                if admin_email and admin_email.strip():
+                                    contact_info = {"email": admin_email.strip()}
+                                    messaging_svc.send_alert(
+                                        contact_info=contact_info,
+                                        message_body=message_body,
+                                        subject=subject,
+                                        attachment_path=attachment_path
+                                    )
+                                    if verbose:
+                                        print(f"[subscriber] 📧 Email alert sent to admin: {admin_email}")
+                                else:
+                                    if verbose:
+                                        print(f"[subscriber] ⚠️  No responders or admin email configured for sector {sector_id}")
+                        else:
+                            if verbose and not hasattr(state, '_email_disabled_logged'):
+                                print(f"[subscriber] 📧 Email alerts DISABLED in settings")
+                                state._email_disabled_logged = True
+                    except Exception as e:
+                        print(f"[subscriber] Email notification error (non-critical): {e}")
+                        import traceback
+                        traceback.print_exc()
                 
                 # --- QUEUE FOR HYBRID VERIFICATION ---
                 if full_frame_pil:

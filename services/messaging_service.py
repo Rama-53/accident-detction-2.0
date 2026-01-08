@@ -152,30 +152,106 @@ class MessagingService:
             return
 
         try:
-            msg = MIMEMultipart()
+            # Create the root message and set the subject
+            msg = MIMEMultipart('related')
             msg['From'] = sender
             msg['To'] = to_email
             msg['Subject'] = subject
-            msg.attach(MIMEText(body, 'plain'))
+            msg.preamble = 'This is a multi-part message in MIME format.'
+
+            # Extract metadata from body if it's a dict (expected for rich alerts)
+            # If body is just a string, we treat it as the message text
+            message_text = body
+            metadata = {}
+            if isinstance(body, dict):
+                message_text = body.get("message", "Accident Detected")
+                metadata = body
+
+            # Create the HTML body
+            # We assume attachment_path corresponds to the snapshot
+            image_cid = "snapshot_image"
             
+            # Build Google Maps directions link if coordinates are available
+            maps_link = ""
+            location_lat = metadata.get('location_lat')
+            location_lng = metadata.get('location_lng')
+            
+            if location_lat is not None and location_lng is not None:
+                # Google Maps Directions API link
+                maps_link = f"https://www.google.com/maps/dir/?api=1&destination={location_lat},{location_lng}"
+            elif metadata.get('location'):
+                # Fallback: Search by location name if no coordinates
+                location_query = metadata.get('location', '').replace(' ', '+')
+                maps_link = f"https://www.google.com/maps/search/?api=1&query={location_query}"
+            
+            html_content = f"""
+            <html>
+            <body style="font-family: Arial, sans-serif; background-color: #f4f4f4; margin: 0; padding: 20px;">
+                <div style="background-color: #ffffff; max-width: 600px; margin: 0 auto; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
+                    <div style="background-color: #d32f2f; color: white; padding: 20px; text-align: center;">
+                        <h1 style="margin: 0; font-size: 24px;">🚨 Accident Detected</h1>
+                    </div>
+                    <div style="padding: 20px;">
+                        <p style="font-size: 16px; color: #333;">{message_text}</p>
+                        
+                        <div style="text-align: center; margin: 20px 0;">
+                            <img src="cid:{image_cid}" style="max-width: 100%; border-radius: 8px; border: 1px solid #ddd;" alt="Accident Snapshot">
+                        </div>
+
+                        <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+                            <tr style="border-bottom: 1px solid #eee;"><td style="padding: 10px; font-weight: bold; color: #555;">Severity:</td><td style="padding: 10px; color: #d32f2f; font-weight: bold;">{metadata.get('severity', 'High').upper()}</td></tr>
+                            <tr style="border-bottom: 1px solid #eee;"><td style="padding: 10px; font-weight: bold; color: #555;">Time:</td><td style="padding: 10px;">{metadata.get('time', datetime.now().strftime('%Y-%m-%d %H:%M:%S'))}</td></tr>
+                            <tr style="border-bottom: 1px solid #eee;"><td style="padding: 10px; font-weight: bold; color: #555;">Camera:</td><td style="padding: 10px;">{metadata.get('camera', 'Unknown')}</td></tr>
+                            <tr style="border-bottom: 1px solid #eee;"><td style="padding: 10px; font-weight: bold; color: #555;">Location:</td><td style="padding: 10px;">{metadata.get('location', 'Unknown')}</td></tr>
+                        </table>
+
+                        <div style="text-align: center; margin-top: 30px;">
+                            <a href="http://localhost:5173" style="background-color: #1a73e8; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-weight: bold; display: inline-block; margin: 5px;">View Dashboard</a>
+                            {f'<a href="{maps_link}" style="background-color: #34a853; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-weight: bold; display: inline-block; margin: 5px;">📍 Get Directions</a>' if maps_link else ''}
+                        </div>
+                    </div>
+                    <div style="background-color: #eee; padding: 10px; text-align: center; font-size: 12px; color: #777;">
+                        Accident Detection System 2.0 &bull; Automated Alert
+                    </div>
+                </div>
+            </body>
+            </html>
+            """
+            
+            # Attach HTML part
+            msgAlternative = MIMEMultipart('alternative')
+            msg.attach(msgAlternative)
+            
+            # Plain text fallback
+            msgText = MIMEText(f"{message_text}\n\nSeverity: {metadata.get('severity')}\nTime: {metadata.get('time')}\nLocation: {metadata.get('location')}", 'plain')
+            msgAlternative.attach(msgText)
+            
+            # HTML View
+            msgHtml = MIMEText(html_content, 'html')
+            msgAlternative.attach(msgHtml)
+
+            # Attach Image with CID
             if attachment_path and os.path.exists(attachment_path):
                 try:
                     with open(attachment_path, 'rb') as f:
                         img_data = f.read()
-                    image = MIMEImage(img_data, name=os.path.basename(attachment_path))
-                    msg.attach(image)
+                    msgImage = MIMEImage(img_data)
+                    msgImage.add_header('Content-ID', f'<{image_cid}>')
+                    msgImage.add_header('Content-Disposition', 'inline', filename=os.path.basename(attachment_path))
+                    msg.attach(msgImage)
                 except Exception as img_err:
                     print(f"[MessagingService] Failed to attach image: {img_err}", flush=True)
 
             server = smtplib.SMTP(server_addr, port)
             server.starttls()
             server.login(sender, password)
-            text = msg.as_string()
-            server.sendmail(sender, to_email, text)
+            server.send_message(msg)
             server.quit()
-            print(f"[MessagingService] Email SENT to {to_email}", flush=True)
+            print(f"[MessagingService] HTML Email SENT to {to_email}", flush=True)
         except Exception as e:
             print(f"[MessagingService] Email Failed: {e}", flush=True)
+            import traceback
+            traceback.print_exc()
 
     def _send_whatsapp_cloud(self, creds, to_phone, message_text):
         token = creds.get("whatsapp_token")

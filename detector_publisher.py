@@ -187,6 +187,22 @@ def main(
                                 if new_name != old_name:
                                     current_config["name"] = new_name
                                     print(f"[publisher] Config updated: name={new_name}")
+                            
+                            # 5. Check lat
+                            if "lat" in doc:
+                                new_lat = doc["lat"]
+                                old_lat = current_config.get("lat")
+                                if new_lat != old_lat:
+                                    current_config["lat"] = new_lat
+                                    print(f"[publisher] Config updated: lat={new_lat}")
+                            
+                            # 6. Check lng
+                            if "lng" in doc:
+                                new_lng = doc["lng"]
+                                old_lng = current_config.get("lng")
+                                if new_lng != old_lng:
+                                    current_config["lng"] = new_lng
+                                    print(f"[publisher] Config updated: lng={new_lng}")
 
                 except Exception as e:
                     print(f"[publisher] Config poll error: {e}")
@@ -302,6 +318,8 @@ def main(
                                 current_identity_meta["name"] = matched_cam.get("name")
                                 current_identity_meta["location"] = matched_cam.get("location")
                                 current_identity_meta["sector_id"] = matched_cam.get("sector_id")
+                                current_identity_meta["lat"] = matched_cam.get("lat")
+                                current_identity_meta["lng"] = matched_cam.get("lng")
                     else:
                         # Fallback to original if no match found
                         if current_camera_id != camera_id:
@@ -423,20 +441,32 @@ def main(
                     # Note: We don't poll updates for the masqueraded camera, but that's acceptable for now.
                     current_loc = current_identity_meta.get("location")
                     current_name = current_identity_meta.get("name")
+                    current_lat = current_identity_meta.get("lat")
+                    current_lng = current_identity_meta.get("lng")
                 else:
                     # Use the polled config of the main detector
                     current_loc = current_config.get("location")
                     current_name = current_config.get("name")
+                    current_lat = current_config.get("lat")
+                    current_lng = current_config.get("lng")
             
             event["camera_id"] = current_camera_id
             if current_name:
                 event["camera_name"] = current_name
             if current_loc:
                 event["location"] = current_loc
-            if location_lat is not None:
+            
+            # Use dynamically polled lat/lng from MongoDB, fallback to command-line args
+            if current_lat is not None:
+                event["location_lat"] = current_lat
+            elif location_lat is not None:
                 event["location_lat"] = location_lat
-            if location_lng is not None:
+            
+            if current_lng is not None:
+                event["location_lng"] = current_lng
+            elif location_lng is not None:
                 event["location_lng"] = location_lng
+                
             event["ts_utc"] = time.time()
 
             if publish_only_crashes and not event.get("crashes"):

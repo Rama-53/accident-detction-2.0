@@ -159,10 +159,13 @@
 
 .full-event-card {
     display: grid;
-    grid-template-columns: 4px minmax(70px, 90px) 1fr auto;
+    /* Only 3 columns: thumbnail, details (flexible), time */
+    grid-template-columns: 90px 1fr auto;
     gap: 1.25rem;
     align-items: center;
-    padding: 1rem 1.25rem 1rem 0;
+    padding: 1rem 1.5rem 1rem 1.5rem;
+    padding-left: 1.5rem;
+    /* Space for severity bar */
     background: var(--surface-card);
     border: 1px solid var(--glass-border);
     border-radius: 0.75rem;
@@ -172,10 +175,32 @@
     overflow: hidden;
     animation: slideIn 0.4s ease-out backwards;
     min-width: 0;
-    min-height: 4.5rem;
-    /* Minimum height for cards */
+    min-height: 5rem;
     flex-shrink: 0;
-    /* Don't compress cards */
+}
+
+/* Severity indicator is absolutely positioned, doesn't take grid column */
+.full-event-card .severity-indicator {
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 5px;
+    background: var(--neon-orange);
+    border-radius: 0.75rem 0 0 0.75rem;
+}
+
+.full-event-card.severity-high .severity-indicator {
+    background: var(--neon-red);
+    box-shadow: 0 0 10px var(--neon-red-glow);
+}
+
+.full-event-card.severity-medium .severity-indicator {
+    background: var(--neon-orange);
+}
+
+.full-event-card.severity-low .severity-indicator {
+    background: var(--severity-low);
 }
 
 /* Only HIGH severity gets the red glow effect */
@@ -195,27 +220,6 @@
         opacity: 1;
         transform: translateX(0);
     }
-}
-
-.full-event-card .severity-indicator {
-    width: 4px;
-    height: 100%;
-    background: var(--neon-orange);
-    border-radius: 4px 0 0 4px;
-    margin-left: -1px;
-}
-
-.full-event-card.severity-high .severity-indicator {
-    background: var(--neon-red);
-    box-shadow: 0 0 10px var(--neon-red-glow);
-}
-
-.full-event-card.severity-medium .severity-indicator {
-    background: var(--neon-orange);
-}
-
-.full-event-card.severity-low .severity-indicator {
-    background: var(--severity-low);
 }
 
 .full-event-card:hover {

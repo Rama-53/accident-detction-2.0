@@ -23,8 +23,8 @@ export function Settings() {
     const [config, setConfig] = useState({
         multi_detection_enabled: multiDetectionEnabled || false,
         video_recording_enabled: false,
-        email_alerts_enabled: true,
-        whatsapp_alerts_enabled: true,
+        email_alerts_enabled: false,
+        whatsapp_alerts_enabled: false,
         admin_email: "",
         admin_phone: "",
         alert_delay_minutes: 10,

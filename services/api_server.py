@@ -264,8 +264,8 @@ class SystemConfig(BaseModel):
 SYSTEM_CONFIG: Dict[str, Any] = {
     "multi_detection_enabled": False,
     "video_recording_enabled": False,  # Default OFF
-    "email_alerts_enabled": True,    # Default ON
-    "whatsapp_alerts_enabled": True, # Default ON
+    "email_alerts_enabled": False,     # Default OFF
+    "whatsapp_alerts_enabled": False,  # Default OFF
     "admin_email": "",
     "admin_phone": "",
     "alert_delay_minutes": 10 # Default 10 minutes
@@ -317,10 +317,12 @@ def get_system_stats():
     detector_online = False
     try:
         import urllib.request
-        req = urllib.request.Request("http://127.0.0.1:5001/stream.mjpg", method='HEAD')
-        req.timeout = 1
-        urllib.request.urlopen(req, timeout=1)
-        detector_online = True
+        # Use GET instead of HEAD since MJPG streaming server doesn't support HEAD
+        req = urllib.request.Request("http://127.0.0.1:5001/stream.mjpg", method='GET')
+        with urllib.request.urlopen(req, timeout=1) as resp:
+            # Just read 1 byte to confirm stream is alive
+            resp.read(1)
+            detector_online = True
     except:
         pass
     
@@ -604,7 +606,21 @@ def _doc_to_event(doc: Dict[str, Any]) -> Dict[str, Any]:
 
     # Fallbacks if prediction fields are missing
     event_type = first_pred.get("label", "accident")
-    severity = first_pred.get("severity", "unknown")
+    severity = first_pred.get("severity")
+    
+    # If severity not in crops, try classification result or calculate from confidence
+    if not severity:
+        classification = doc.get("classification") or {}
+        if classification.get("confidence"):
+            conf = float(classification.get("confidence", 0))
+            if conf >= 0.8:
+                severity = "high"
+            elif conf >= 0.5:
+                severity = "medium"
+            else:
+                severity = "low"
+        else:
+            severity = "medium"  # Default to medium instead of unknown
 
     # Prefer detector_ts (when the frame was processed), fall back to inserted_at
     ts = doc.get("detector_ts") or doc.get("inserted_at")

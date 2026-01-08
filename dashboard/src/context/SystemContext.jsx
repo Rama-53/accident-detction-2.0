@@ -39,6 +39,7 @@ export function SystemProvider({ children }) {
     // --- Toast Notification State ---
     const [toasts, setToasts] = useState([]);
     const seenAlertIds = useRef(new Set());
+    const initialLoadComplete = useRef(false);
 
     // --- Hooks ---
     const systemData = useSystemData(selectedCamera, filterStartTime, filterEndTime);
@@ -47,7 +48,9 @@ export function SystemProvider({ children }) {
     // --- Helpers & Computed Values ---
     const {
         events,
-        setEvents
+        setEvents,
+        clearAllAlerts,
+        clearDisplayedAlerts
     } = systemData;
 
     const {
@@ -96,16 +99,23 @@ export function SystemProvider({ children }) {
     useEffect(() => {
         if (!events || events.length === 0) return;
 
+        // On first load, just track all existing IDs without showing toasts
+        if (!initialLoadComplete.current) {
+            events.forEach(event => {
+                seenAlertIds.current.add(event.id);
+            });
+            // Mark initial load as complete after a short delay to ensure all initial events are processed
+            setTimeout(() => {
+                initialLoadComplete.current = true;
+            }, 1000);
+            return;
+        }
+
+        // After initial load, only show toasts for new alerts
         events.forEach(event => {
-            // Check if this is a new alert we haven't seen before
             if (!seenAlertIds.current.has(event.id)) {
                 seenAlertIds.current.add(event.id);
-
-                // Only show toast for genuinely new alerts (not on initial load)
-                // We check if we already have some alerts tracked to avoid showing toasts on page load
-                if (seenAlertIds.current.size > 1) {
-                    addToast(event);
-                }
+                addToast(event);
             }
         });
     }, [events, addToast]);
@@ -143,6 +153,8 @@ export function SystemProvider({ children }) {
 
         // System Data
         ...systemData,
+        clearAllAlerts,
+        clearDisplayedAlerts,
 
         // Camera Control
         ...cameraControl,

@@ -84,27 +84,32 @@ fig1.text(0.5, 0.02, 'Proposed System                    Accuracy = ×100',
 
 plt.tight_layout(rect=[0, 0.03, 1, 0.96])
 plt.savefig('performance_analysis.png', dpi=300, bbox_inches='tight', facecolor='white')
-print("✅ Saved: performance_analysis.png")
+print("[OK] Saved: performance_analysis.png")
 
 # ============================================================================
 # FIGURE 2: Comprehensive Model Comparison
 # ============================================================================
-fig2, axes = plt.subplots(2, 2, figsize=(14, 10))
+fig2, axes = plt.subplots(3, 2, figsize=(14, 18))  # Increased height further
 fig2.suptitle('Accident Detection System - Comprehensive Performance Analysis', 
               fontsize=16, fontweight='bold', y=0.98)
 
+# Adjust spacing explicitly
+plt.subplots_adjust(hspace=0.6, wspace=0.3)
+
+# Shared Data
+models = ['Keras', 'ResNet50', 'Hybrid\n(Keras + ResNet50)']
+colors = ['#ef4444', '#f59e0b', '#10b981']
+
 # ----------------------------------------------------------------------------
-# Plot 1: Model Accuracy Comparison
+# Plot 1: Model Accuracy Comparison (Top Left)
 # ----------------------------------------------------------------------------
 ax = axes[0, 0]
-models = ['Primary CNN\n(accidents.keras)', 'Secondary\n(ResNet50)', 'Hybrid\n(YOLO+CNN)']
 accuracies = [46.94, 58.16, 89.80]
-colors = ['#ef4444', '#f59e0b', '#10b981']
 
 bars = ax.bar(models, accuracies, color=colors, alpha=0.8, edgecolor='black', linewidth=1.5)
 ax.set_ylabel('Accuracy (%)', fontsize=11, fontweight='bold')
-ax.set_title('Overall Model Accuracy', fontsize=12, fontweight='bold')
-ax.set_ylim(0, 100)
+ax.set_title('1. Overall Model Accuracy', fontsize=12, fontweight='bold')
+ax.set_ylim(0, 125)  # Increased for spacing
 ax.grid(axis='y', alpha=0.3)
 ax.axhline(y=90, color='green', linestyle='--', linewidth=1.5, alpha=0.5, label='Target: 90%')
 
@@ -117,49 +122,51 @@ for bar, acc in zip(bars, accuracies):
 ax.legend(loc='upper left', fontsize=9)
 
 # ----------------------------------------------------------------------------
-# Plot 2: Precision vs Recall
+# Plot 2: Precision Comparison (Top Right)
 # ----------------------------------------------------------------------------
 ax = axes[0, 1]
-
-model_names = ['Primary\nCNN', 'Secondary\nResNet', 'Hybrid']
 precision_accident = [46.94, 75.0, 90.91]
-recall_accident = [100.0, 39.13, 86.96]
 
-x = np.arange(len(model_names))
-width = 0.35
-
-bars1 = ax.bar(x - width/2, precision_accident, width, label='Precision',
-               color='#3b82f6', alpha=0.8, edgecolor='black')
-bars2 = ax.bar(x + width/2, recall_accident, width, label='Recall',
-               color='#8b5cf6', alpha=0.8, edgecolor='black')
-
-ax.set_ylabel('Percentage (%)', fontsize=11, fontweight='bold')
-ax.set_title('Accident Detection: Precision vs Recall', fontsize=12, fontweight='bold')
-ax.set_xticks(x)
-ax.set_xticklabels(model_names, fontsize=9)
-ax.legend(fontsize=9)
-ax.set_ylim(0, 110)
+bars = ax.bar(models, precision_accident, color=colors, alpha=0.8, edgecolor='black', linewidth=1.5)
+ax.set_ylabel('Precision (%)', fontsize=11, fontweight='bold')
+ax.set_title('2. Accident Precision (Fewer False Alarms)', fontsize=12, fontweight='bold')
+ax.set_ylim(0, 125)  # Increased for spacing
 ax.grid(axis='y', alpha=0.3)
 
 # Add value labels
-for bars in [bars1, bars2]:
-    for bar in bars:
-        height = bar.get_height()
-        ax.text(bar.get_x() + bar.get_width()/2., height + 2,
-                f'{height:.1f}%', ha='center', va='bottom', fontsize=8)
+for bar, val in zip(bars, precision_accident):
+    height = bar.get_height()
+    ax.text(bar.get_x() + bar.get_width()/2., height + 2,
+            f'{val:.1f}%', ha='center', va='bottom', fontsize=10, fontweight='bold')
 
 # ----------------------------------------------------------------------------
-# Plot 3: F1 Score Comparison
+# Plot 3: Recall Comparison (Middle Left)
 # ----------------------------------------------------------------------------
 ax = axes[1, 0]
+recall_accident = [100.0, 39.13, 86.96]
 
+bars = ax.bar(models, recall_accident, color=colors, alpha=0.8, edgecolor='black', linewidth=1.5)
+ax.set_ylabel('Recall (%)', fontsize=11, fontweight='bold')
+ax.set_title('3. Accident Recall (Missed Accidents)', fontsize=12, fontweight='bold')
+ax.set_ylim(0, 125)  # Increased for spacing
+ax.grid(axis='y', alpha=0.3)
+
+# Add value labels
+for bar, val in zip(bars, recall_accident):
+    height = bar.get_height()
+    ax.text(bar.get_x() + bar.get_width()/2., height + 2,
+            f'{val:.1f}%', ha='center', va='bottom', fontsize=10, fontweight='bold')
+
+# ----------------------------------------------------------------------------
+# Plot 4: F1 Score Comparison (Middle Right)
+# ----------------------------------------------------------------------------
+ax = axes[1, 1]
 f1_scores = [63.64, 51.72, 88.89]
-colors_f1 = ['#ef4444', '#f59e0b', '#10b981']
 
-bars = ax.bar(models, f1_scores, color=colors_f1, alpha=0.8, edgecolor='black', linewidth=1.5)
+bars = ax.bar(models, f1_scores, color=colors, alpha=0.8, edgecolor='black', linewidth=1.5)
 ax.set_ylabel('F1 Score (%)', fontsize=11, fontweight='bold')
-ax.set_title('F1 Score Comparison (Harmonic Mean)', fontsize=12, fontweight='bold')
-ax.set_ylim(0, 100)
+ax.set_title('4. F1 Score (Balance of Prec & Rec)', fontsize=12, fontweight='bold')
+ax.set_ylim(0, 125)  # Increased for spacing
 ax.grid(axis='y', alpha=0.3)
 
 # Add value labels
@@ -168,37 +175,50 @@ for bar, f1 in zip(bars, f1_scores):
     ax.text(bar.get_x() + bar.get_width()/2., height + 2,
             f'{f1:.1f}%', ha='center', va='bottom', fontsize=10, fontweight='bold')
 
+
 # ----------------------------------------------------------------------------
-# Plot 4: False Positive Rate Comparison
+# Plot 5 & 6: Mathematical Equations
 # ----------------------------------------------------------------------------
-ax = axes[1, 1]
+# Hide the axes for the equation area
+axes[2, 0].axis('off')
+axes[2, 1].axis('off')
 
-# False Positive Rate = FP / (FP + TN)
-# Primary: 100% FPR (all non-accidents classified as accidents)
-# Secondary: 25% FPR
-# Hybrid: 7.69% FPR
-fpr = [100.0, 25.0, 7.69]
-colors_fpr = ['#ef4444', '#f59e0b', '#10b981']
+# Combine the bottom two axes into one area for text
+plt.subplots_adjust(hspace=0.4)
 
-bars = ax.bar(models, fpr, color=colors_fpr, alpha=0.8, edgecolor='black', linewidth=1.5)
-ax.set_ylabel('False Positive Rate (%)', fontsize=11, fontweight='bold')
-ax.set_title('False Alarm Rate (Lower is Better)', fontsize=12, fontweight='bold')
-ax.set_ylim(0, 110)
-ax.grid(axis='y', alpha=0.3)
+# Add Equations Text
+equations_text = (
+    r"$\bf{Mathematical\ Equations\ Used:}$" + "\n\n"
+    r"$\bf{1.\ Accuracy} = \frac{TP + TN}{Total\ Samples} \times 100$" + "\n\n"
+    r"$\bf{2.\ Precision} = \frac{TP}{TP + FP} \times 100$" + "\n\n"
+    r"$\bf{3.\ Recall\ (Sensitivity)} = \frac{TP}{TP + FN} \times 100$" + "\n\n"
+    r"$\bf{4.\ F1\ Score} = 2 \times \frac{Precision \times Recall}{Precision + Recall}$" + "\n\n"
+    r"$\bf{5.\ False\ Positive\ Rate\ (FPR)} = \frac{FP}{FP + TN} \times 100$"
+)
 
-# Add value labels
-for bar, rate in zip(bars, fpr):
-    height = bar.get_height()
-    ax.text(bar.get_x() + bar.get_width()/2., height + 2,
-            f'{rate:.1f}%', ha='center', va='bottom', fontsize=10, fontweight='bold')
+# Place text in the bottom left area (spanning across if needed visually, 
+# but here specific to ax[2,0] with overflow)
+axes[2, 0].text(0.0, 0.5, equations_text, fontsize=14, va='center', ha='left')
+
+# Add Legend/Key text in the bottom right
+key_text = (
+    r"$\bf{Legend:}$" + "\n\n"
+    r"TP = True Positive (Accident Correctly Detected)" + "\n"
+    r"TN = True Negative (Non-Accident Correctly Ignored)" + "\n"
+    r"FP = False Positive (False Alarm)" + "\n"
+    r"FN = False Negative (Missed Accident)"
+)
+axes[2, 1].text(0.1, 0.5, key_text, fontsize=12, va='center', ha='left',
+                bbox=dict(boxstyle="round,pad=0.5", fc="#f0f9ff", ec="#bae6fd", alpha=0.8))
+
 
 plt.tight_layout(rect=[0, 0, 1, 0.96])
-plt.savefig('model_comparison.png', dpi=300, bbox_inches='tight', facecolor='white')
-print("✅ Saved: model_comparison.png")
+plt.savefig('model_comparison_with_equations.png', dpi=300, bbox_inches='tight', facecolor='white')
+print("[OK] Saved: model_comparison_with_equations.png")
 
-# ============================================================================
-# FIGURE 3: System Performance Metrics
-# ============================================================================
+# Start Figure 3 (System Performance)
+print("Skipping re-generation of other plots...")
+
 fig3, axes = plt.subplots(2, 2, figsize=(14, 10))
 fig3.suptitle('Real-Time System Performance Metrics', 
               fontsize=16, fontweight='bold', y=0.98)
@@ -311,7 +331,7 @@ ax.grid(axis='y', alpha=0.3)
 
 plt.tight_layout(rect=[0, 0, 1, 0.96])
 plt.savefig('system_performance.png', dpi=300, bbox_inches='tight', facecolor='white')
-print("✅ Saved: system_performance.png")
+print("[OK] Saved: system_performance.png")
 
 # ============================================================================
 # Summary
