@@ -1,4 +1,5 @@
 // src/App.jsx
+import { AnimatePresence, motion } from "framer-motion";
 import "./App.css";
 
 // Context
@@ -54,15 +55,27 @@ function AppContent() {
       <ToastContainer />
 
       <Layout>
-        {activeTab === "dashboard" && <Dashboard />}
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={activeTab}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.2 }}
+            className="w-full h-full"
+            style={{ width: '100%', height: '100%' }}
+          >
+            {activeTab === "dashboard" && <Dashboard />}
 
-        {activeTab === "camerawall" && <CameraWall />}
+            {activeTab === "camerawall" && <CameraWall />}
 
-        {activeTab === "alerts" && <AlertsPage />}
+            {activeTab === "alerts" && <AlertsPage />}
 
-        {activeTab === "gallery" && <Gallery />}
+            {activeTab === "gallery" && <Gallery />}
 
-        {activeTab === "settings" && <Settings />}
+            {activeTab === "settings" && <Settings />}
+          </motion.div>
+        </AnimatePresence>
       </Layout>
     </>
   );

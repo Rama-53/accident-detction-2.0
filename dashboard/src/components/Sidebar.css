@@ -82,48 +82,32 @@
 
 /* Premium Active State (Analyze Button Style) */
 .nav-btn.active {
-    /* Gradient Border Trick */
-    background: linear-gradient(var(--bg-sidebar), var(--bg-sidebar)) padding-box,
-        linear-gradient(135deg, #3b82f6, #8b5cf6, #ec4899) border-box;
-    border: 2px solid transparent;
-    border-radius: 14px;
+    /* Remove static background for motion div */
+    background: transparent;
     color: var(--text-main);
     font-weight: 600;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.active-background {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(139, 92, 246, 0.1));
+    border: 1px solid rgba(139, 92, 246, 0.3);
+    border-radius: 14px;
+    z-index: 0;
+}
+
+/* Ensure content sits above the background */
+.nav-icon-wrapper,
+.nav-label {
+    position: relative;
+    z-index: 1;
 }
 
 /* Glow Effect for Active Tab */
 .nav-btn.active::after {
-    content: "";
-    position: absolute;
-    inset: -2px;
-    z-index: -1;
-    background: linear-gradient(135deg, #3b82f6, #8b5cf6, #ec4899);
-    border-radius: 14px;
-    filter: blur(12px);
-    opacity: 0.6;
-    transition: opacity 0.3s ease;
-}
-
-.nav-btn.active:hover::after {
-    opacity: 0.8;
-}
-
-.nav-btn.active .nav-icon-wrapper {
-    color: var(--text-main);
-}
-
-.nav-icon-wrapper {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 24px;
-    height: 24px;
-}
-
-.nav-label {
-    flex: 1;
-    z-index: 1;
+    display: none;
+    /* Let the motion div handle the visuals */
 }
 
 /* Removed old side indicator as the full button is now highlighted */

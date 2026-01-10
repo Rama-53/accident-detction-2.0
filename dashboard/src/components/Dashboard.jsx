@@ -1,29 +1,52 @@
 // src/components/Dashboard.jsx
+import { motion } from 'framer-motion';
 import { LiveFeed } from './LiveFeed';
 import { CameraMap } from './CameraMap';
 import { AlertsList } from './AlertsList';
 import { StatsWidget } from './StatsWidget';
 import './Dashboard.css';
 
+const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+        opacity: 1,
+        transition: {
+            staggerChildren: 0.1
+        }
+    }
+};
+
+const itemVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: { opacity: 1, y: 0 }
+};
+
 export function Dashboard() {
     return (
-        <div className="dashboard-container animate-enter">
+        <motion.div
+            className="dashboard-container"
+            variants={containerVariants}
+            initial="hidden"
+            animate="visible"
+        >
             {/* Statistics Widget */}
-            <StatsWidget />
+            <motion.div variants={itemVariants}>
+                <StatsWidget />
+            </motion.div>
 
             <div className="dashboard-grid">
-                <div className="live-feed-section">
+                <motion.div className="live-feed-section" variants={itemVariants}>
                     <LiveFeed />
-                </div>
+                </motion.div>
 
-                <div className="alerts-section">
+                <motion.div className="alerts-section" variants={itemVariants}>
                     <AlertsList />
-                </div>
+                </motion.div>
 
-                <div className="map-section">
+                <motion.div className="map-section" variants={itemVariants}>
                     <CameraMap />
-                </div>
+                </motion.div>
             </div>
-        </div>
+        </motion.div>
     );
 }
