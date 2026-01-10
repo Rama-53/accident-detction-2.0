@@ -282,7 +282,14 @@ def main(zmq_host: str, zmq_port: int, mongo_uri: str, db_name: str, out_dir: st
             state.last_write_ts = now
             
             # 2. Start Video Recording (if not already)
-            if not state.is_recording and full_frame_cv2 is not None:
+            # Check system config first
+            sys_conf_chk = db.system_config.find_one({"config_id": "main"}) or {}
+            rec_enabled = sys_conf_chk.get("video_recording_enabled", False)
+            
+            if verbose and frame_idx % 60 == 0:
+                print(f"[debug] Alerts: {sum(state.history)}/10, RecEnabled: {rec_enabled}, IsRec: {state.is_recording}")
+
+            if rec_enabled and not state.is_recording and full_frame_cv2 is not None:
                 state.is_recording = True
                 state.recording_frames_left = POST_EVENT_SECONDS * FPS
                 
@@ -294,11 +301,15 @@ def main(zmq_host: str, zmq_port: int, mongo_uri: str, db_name: str, out_dir: st
                 h, w, _ = full_frame_cv2.shape
                 fourcc = cv2.VideoWriter_fourcc(*'mp4v') # or 'avc1' or 'XVID'
                 state.current_video_writer = cv2.VideoWriter(state.current_video_path, fourcc, FPS, (w, h))
-                
-                # Dump buffer (Pre-Event)
-                print(f"[subscriber] Triggered recording! Dumping {len(state.frame_buffer)} buffer frames...")
-                for old_frame in state.frame_buffer:
-                    state.current_video_writer.write(old_frame)
+                if not state.current_video_writer.isOpened():
+                    print(f"[subscriber] ERROR: Failed to open video writer: {state.current_video_path}")
+                    state.is_recording = False
+                    state.current_video_writer = None
+                else:
+                    # Dump buffer (Pre-Event)
+                    print(f"[subscriber] Triggered recording! Dumping {len(state.frame_buffer)} buffer frames to {vid_name}")
+                    for old_frame in state.frame_buffer:
+                        state.current_video_writer.write(old_frame)
             
             # 3. DB Logic (Grouping)
             # Fetch System Config for Delay
