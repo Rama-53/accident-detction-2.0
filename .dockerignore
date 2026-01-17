@@ -1,0 +1,31 @@
+# Version Control
+.git
+.gitignore
+
+# Python / Environment
+.venv
+.venev2
+.venv_wsl
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+
+# Dependencies
+node_modules
+
+# Data & Media (Mounted via volumes, not needed in image)
+accident_crops/
+videos/
+experiments/
+temp_uploads/
+logs/
+reports/
+
+# Dashboard (Built separately)
+dashboard/node_modules
+dashboard/dist
+
+# IDEs
+.vscode
+.idea

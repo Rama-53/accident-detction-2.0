@@ -1,0 +1,8 @@
+pyzmq
+pymongo
+opencv-python
+ultralytics
+norfair
+numpy
+python-dotenv
+requests

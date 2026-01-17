@@ -1,0 +1,11 @@
+fastapi
+uvicorn
+python-multipart
+requests
+pymongo
+pandas
+openpyxl
+python-dateutil
+python-dotenv
+prometheus-client
+psutil

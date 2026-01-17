@@ -35,6 +35,14 @@ from fastapi import FastAPI, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, FileResponse, StreamingResponse
 from pymongo import MongoClient
+import os
+from prometheus_client import make_asgi_app, Counter, Histogram, Gauge
+
+# Prometheus Metrics
+REQUEST_COUNT = Counter("http_requests_total", "Total HTTP requests", ["method", "endpoint", "status"])
+REQUEST_LATENCY = Histogram("http_request_duration_seconds", "HTTP request latency", ["method", "endpoint"])
+SYSTEM_UPTIME = Gauge("system_uptime_seconds", "Time since API started")
+ACTIVE_DETECTIONS = Gauge("active_detections_count", "Number of cameras with detection enabled")
 
 app = FastAPI()
 
@@ -47,7 +55,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-MONGO_URI = "mongodb://127.0.0.1:27017"
+# Mount Prometheus metrics endpoint
+metrics_app = make_asgi_app()
+app.mount("/metrics", metrics_app)
+
+MONGO_URI = os.getenv("MONGO_URI", "mongodb://127.0.0.1:27017")
 DB_NAME = "accident_db"
 client = MongoClient(MONGO_URI)
 db = client[DB_NAME]
@@ -79,7 +91,7 @@ VIDEO_SOURCES: Dict[str, Dict[str, Any]] = {
         "label": "Detector Stream (with BBoxes)",
         "type": "ip",
         "description": "Live stream from the detector with bounding boxes",
-        "source": "http://127.0.0.1:5001/stream.mjpg",
+        "source": os.getenv("DETECTOR_STREAM_URL", "http://127.0.0.1:5001/stream.mjpg"),
         "requires_value": False,
         "camera_id": "detector_stream",
         "camera_name": "Detector Live View",
@@ -318,7 +330,9 @@ def get_system_stats():
     try:
         import urllib.request
         # Use GET instead of HEAD since MJPG streaming server doesn't support HEAD
-        req = urllib.request.Request("http://127.0.0.1:5001/stream.mjpg", method='GET')
+        # Use internal docker host if available, otherwise default to localhost (or env var)
+        detector_url = os.getenv("DETECTOR_HEALTH_URL", "http://127.0.0.1:5001/stream.mjpg")
+        req = urllib.request.Request(detector_url, method='GET')
         with urllib.request.urlopen(req, timeout=1) as resp:
             # Just read 1 byte to confirm stream is alive
             resp.read(1)

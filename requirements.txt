@@ -16,3 +16,4 @@ openpyxl
 python-dateutil
 python-dotenv
 tensorflow
+prometheus-client

@@ -1,0 +1,12 @@
+tensorflow
+ultralytics
+easyocr
+opencv-python
+pillow
+pandas
+numpy
+pyzmq
+pymongo
+python-dotenv
+tqdm
+requests

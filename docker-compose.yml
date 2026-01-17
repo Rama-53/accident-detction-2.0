@@ -1,0 +1,103 @@
+services:
+  mongo:
+    image: mongo:latest
+    container_name: accident_mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    container_name: accident_api
+    command: uvicorn services.api_server:app --host 0.0.0.0 --port 8000
+    ports:
+      - "8000:8000"
+    environment:
+      - MONGO_URI=mongodb://mongo:27017
+      - DETECTOR_STREAM_URL=http://localhost:5001/stream.mjpg
+      - DETECTOR_HEALTH_URL=http://detector:5001/stream.mjpg
+    volumes:
+      - ./accident_crops:/app/accident_crops
+    depends_on:
+      - mongo
+      - detector
+
+  detector:
+    build:
+      context: .
+      dockerfile: Dockerfile.detector
+    container_name: accident_detector
+    # Running with cctv_eg.mp4 by default. 
+    # Important: The stream is on 5001, ZMQ publisher on 5556
+    command: python detector_publisher.py --video cctv_eg.mp4 --port 5556 --http-port 5001
+    ports:
+      - "5001:5001"
+      - "5556:5556"
+    environment:
+      - MONGO_URI=mongodb://mongo:27017
+    volumes:
+      - ./accident_crops:/app/accident_crops
+      - ./videos:/app/videos
+    # UNCOMMENT THE FOLLOWING LINES TO ENABLE WEBCAM PASS-THROUGH (Linux/WSL2 only)
+    # privileged: true
+    # devices:
+    #   - /dev/video0:/dev/video0
+    depends_on:
+      - mongo
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [ gpu ]
+
+  classifier:
+    build:
+      context: .
+      dockerfile: Dockerfile.classifier
+    container_name: accident_classifier
+    # Connects to 'detector' host on port 5556
+    command: python classifier_subscriber_async.py --host detector --port 5556 --mongo mongodb://mongo:27017 --db accident_db --outdir /app/accident_crops
+    environment:
+      - MONGO_URI=mongodb://mongo:27017
+    volumes:
+      - ./accident_crops:/app/accident_crops
+    depends_on:
+      - mongo
+      - detector
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [ gpu ]
+
+  dashboard:
+    build:
+      context: ./dashboard
+      dockerfile: Dockerfile
+    container_name: accident_dashboard
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_URL=http://localhost:8000
+    depends_on:
+      - api
+
+  prometheus:
+    image: prom/prometheus
+    container_name: accident_prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+
+volumes:
+  mongo_data:

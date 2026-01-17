@@ -21,6 +21,7 @@ import numpy as np
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from socketserver import ThreadingMixIn
 from pymongo import MongoClient
+import os
 
 # Import your AccidentDetector class
 try:
@@ -147,7 +148,8 @@ def main(
         Periodically check MongoDB for camera config overrides.
         """
         try:
-            mongo_client = MongoClient("mongodb://127.0.0.1:27017")
+            mongo_uri = os.getenv("MONGO_URI", "mongodb://127.0.0.1:27017")
+            mongo_client = MongoClient(mongo_uri)
             db = mongo_client["accident_db"]
             print(f"[publisher] Config polling started for {camera_id}")
             
@@ -230,27 +232,80 @@ def main(
     current_source_val = video_source
     cap = None
 
-    def open_capture(src_val):
+    cap = None
+
+    def resolve_video_source(src_val):
+        """
+        Intelligent path resolution for Docker/Cross-platform usage.
+        1. If it's an integer (webcam index), return int.
+        2. If it's a URL (http/rtsp), return string.
+        3. If it's a file path:
+           - Try precise path.
+           - Try basename in /app/ (Docker root).
+           - Try basename in /app/videos/.
+           - Try basename in /app/accident_crops/.
+        """
+        # 1. Integer check
         try:
-            s = int(src_val)
-            # Try DSHOW first (best for many physical webcams on Windows)
-            if sys.platform == "win32":
-                print(f"[publisher] Attempting to open source {s} with CAP_DSHOW...")
-                c = cv2.VideoCapture(s, cv2.CAP_DSHOW)
-                # Give it a moment to initialize
-                time.sleep(0.5)
-                if not c.isOpened():
-                    print(f"[publisher] CAP_DSHOW failed for {s}. Waiting 1s before fallback...")
-                    c.release()
-                    time.sleep(1.0)
-                    print(f"[publisher] Falling back to default (MSMF) for {s}...")
+            return int(src_val)
+        except ValueError:
+            pass
+            
+        str_val = str(src_val)
+        
+        # 2. URL check
+        if "://" in str_val:
+            return str_val
+            
+        # 3. File Path Logic
+        # If we are seemingly in a Linux container (Docker) but receive a Windows path
+        import platform
+        is_linux = platform.system() == "Linux"
+        
+        candidates = [str_val] # Always try exact match first
+        
+        if is_linux and (":" in str_val or "\\" in str_val):
+            # It's likely a Windows path passed to Docker
+            basename = Path(str_val).name
+            candidates.append(f"/app/{basename}")
+            candidates.append(f"/app/videos/{basename}")
+            candidates.append(f"/app/accident_crops/{basename}")
+        
+        for cand in candidates:
+            p = Path(cand)
+            if p.exists():
+                print(f"[publisher] Resolved source '{str_val}' -> '{cand}'")
+                return str(cand)
+        
+        print(f"[publisher] Could not resolve file path: {str_val}. using original.")
+        return str_val
+
+    def open_capture(src_val):
+        resolved_src = resolve_video_source(src_val)
+        try:
+            # Check if it's an integer (webcam index)
+            if isinstance(resolved_src, int):
+                s = resolved_src
+                # Try DSHOW first (best for many physical webcams on Windows)
+                if sys.platform == "win32":
+                    print(f"[publisher] Attempting to open source {s} with CAP_DSHOW...")
+                    c = cv2.VideoCapture(s, cv2.CAP_DSHOW)
+                    # Give it a moment to initialize
+                    time.sleep(0.5)
+                    if not c.isOpened():
+                        print(f"[publisher] CAP_DSHOW failed for {s}. Waiting 1s before fallback...")
+                        c.release()
+                        time.sleep(1.0)
+                        print(f"[publisher] Falling back to default (MSMF) for {s}...")
+                        c = cv2.VideoCapture(s)
+                else:
                     c = cv2.VideoCapture(s)
             else:
+                s = resolved_src
                 c = cv2.VideoCapture(s)
-        except ValueError:
-            # Not an integer -> likely a file path or URL
-            s = src_val
-            c = cv2.VideoCapture(s)
+        except Exception as e:
+            print(f"Error opening capture: {e}")
+            return cv2.VideoCapture(str(src_val)) # Fallback
         
         if not c.isOpened():
              print(f"[publisher] Warning: Cannot open source {s}")
@@ -297,7 +352,8 @@ def main(
                     # We need a fresh client here or reuse the one from poll_thread if accessible?
                     # Simplest to just create a short-lived client or use a shared one if we refactored.
                     # Since this happens rarely (on switch), a new client is fine.
-                    m_client = MongoClient("mongodb://127.0.0.1:27017")
+                    mongo_uri = os.getenv("MONGO_URI", "mongodb://127.0.0.1:27017")
+                    m_client = MongoClient(mongo_uri)
                     m_db = m_client["accident_db"]
                     search_query = {
                         "video_source": str(new_source_val),
