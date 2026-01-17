@@ -15,7 +15,25 @@ class HybridAccidentClassifier:
     
     Strategy: Use model 1 as primary detector, model 2 to filter false alarms
     """
+    
+    Strategy: Use model 1 as primary detector, model 2 to filter false alarms
+    """
+    
     def __init__(self, primary_model_path=None, secondary_model_path=None):
+        # --- MONKEY PATCH FIX ---
+        # Robustly handle 'quantization_config' error by patching Dense globally.
+        # This works even if Keras deserialization bypasses custom objects.
+        try:
+            original_dense_init = keras.layers.Dense.__init__
+            def patched_dense_init(self, *args, **kwargs):
+                if 'quantization_config' in kwargs:
+                    kwargs.pop('quantization_config')
+                original_dense_init(self, *args, **kwargs)
+            keras.layers.Dense.__init__ = patched_dense_init
+            print("[HybridClassifier] Applied global patch to keras.layers.Dense")
+        except Exception as e:
+            print(f"[HybridClassifier] Warning: Failed to patch Dense: {e}")
+
         current_dir = os.path.dirname(os.path.abspath(__file__))
         
         # Primary model: accidents.keras (catches everything)
@@ -24,8 +42,8 @@ class HybridAccidentClassifier:
         
         # Secondary model: ResNet50 (better accuracy)
         if secondary_model_path is None:
-            # Models are in Project Trial/Experiment 1/transfer_learning/
-            secondary_model_path = r"C:\Users\Ram\Desktop\Project Trial\Experiment 1\transfer_learning\resnet50_phase2_best.keras"
+            # Look for model in the same directory as primary model
+            secondary_model_path = os.path.join(current_dir, "resnet50_phase2_best.keras")
             
         print(f"[HybridClassifier] Initializing dual-model system...")
         print(f"[HybridClassifier] Primary (Safety): {primary_model_path}")
@@ -41,6 +59,8 @@ class HybridAccidentClassifier:
             print("[HybridClassifier] WARNING: No GPU detected. Running on CPU.")
 
         # Load primary model (accidents.keras)
+        try:
+            print("[HybridClassifier] Loading primary model (accidents.keras)...")
         try:
             print("[HybridClassifier] Loading primary model (accidents.keras)...")
             self.primary_model = keras.models.load_model(primary_model_path)
@@ -179,10 +199,10 @@ class HybridAccidentClassifier:
         Combine predictions from both models.
         
         Strategy:
-        - If primary says "No Accident" → Trust it (unlikely, but respect it)
+        - If primary says "No Accident" -> Trust it (unlikely, but respect it)
         - If primary says "Accident":
-          - If secondary agrees → HIGH confidence (likely real accident)
-          - If secondary disagrees → MEDIUM confidence (possible false alarm)
+          - If secondary agrees -> HIGH confidence (likely real accident)
+          - If secondary disagrees -> MEDIUM confidence (possible false alarm)
         """
         # Both models agree it's NOT an accident (rare with current model)
         if not primary["is_accident"] and not secondary["is_accident"]:

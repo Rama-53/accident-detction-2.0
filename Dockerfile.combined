@@ -1,0 +1,22 @@
+FROM python:3.10-slim
+
+# Install system dependencies (merged list for opencv and tensorflow)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libgl1 \
+    libglib2.0-0 \
+    libgomp1 \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Install Python dependencies
+COPY requirements.combined.txt .
+RUN pip install --upgrade pip && pip install -r requirements.combined.txt
+
+# Copy source code
+COPY . .
+
+# Make entrypoint executable and fix line endings (crucial for Windows builds)
+RUN sed -i 's/\r$//' start_services.sh && chmod +x start_services.sh
+
+CMD ["./start_services.sh"]

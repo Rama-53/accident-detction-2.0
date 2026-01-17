@@ -108,6 +108,7 @@ def start_mjpeg_server(port=5001):
 
 def main(
     video_source: str, 
+    dest_host: str = "127.0.0.1",
     zmq_port: int = 5556, 
     http_port: int = 5001,
     publish_rate: float = None, 
@@ -221,12 +222,18 @@ def main(
     t = threading.Thread(target=start_mjpeg_server, args=(http_port,), daemon=True)
     t.start()
 
-    # Prepare ZeroMQ PUB
+    # Prepare ZeroMQ PUB (Client - Connects)
     ctx = zmq.Context()
     sock = ctx.socket(zmq.PUB)
-    bind_addr = f"tcp://*:{zmq_port}"
-    sock.bind(bind_addr)
-    print(f"[publisher] Bound PUB socket to {bind_addr}")
+    # Architecture Change: CONNECT instead of BIND
+    # Dynamic detectors connect to the stable classifier
+    connect_addr = f"tcp://{dest_host}:{zmq_port}"
+    try:
+        sock.connect(connect_addr)
+        print(f"[publisher] Connected PUB socket -> {connect_addr}")
+    except zmq.ZMQError as e:
+        print(f"[publisher] Failed to connect to {connect_addr}: {e}")
+        raise
 
     # Initial Open video source
     current_source_val = video_source
@@ -567,7 +574,8 @@ def main(
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="AccidentDetector -> ZeroMQ publisher")
     parser.add_argument("--video", "-v", required=True, help="Video file path or webcam index (0,1...). Use '0' for webcam.")
-    parser.add_argument("--port", "-p", default=5556, type=int, help="ZeroMQ PUB port (default 5556)")
+    parser.add_argument("--dest-host", default="127.0.0.1", help="Classifier Hostname/IP (default 127.0.0.1)")
+    parser.add_argument("--port", "-p", default=5556, type=int, help="ZeroMQ port (default 5556)")
     parser.add_argument("--http-port", default=5001, type=int, help="MJPEG HTTP stream port (default 5001)")
     parser.add_argument("--rate", "-r", default=None, type=float, help="Optional publish delay in seconds (e.g. 0.033 -> ~30 FPS)")
     parser.add_argument("--camera-id", default="demo_cam_main", help="Camera/source identifier embedded in events")
@@ -592,6 +600,7 @@ if __name__ == "__main__":
 
     main(
         video_source=args.video, 
+        dest_host=args.dest_host,
         zmq_port=args.port, 
         http_port=args.http_port,
         publish_rate=args.rate,  

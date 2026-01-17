@@ -59,6 +59,37 @@ app.add_middleware(
 metrics_app = make_asgi_app()
 app.mount("/metrics", metrics_app)
 
+# --- Dynamic Container Management ---
+from services.container_manager import ContainerManager
+import threading
+import time
+
+container_manager = ContainerManager()
+
+def run_container_sync_loop():
+    """
+    Background loop to ensure detector containers match the enabled cameras.
+    """
+    print("[api] Starting container sync loop...")
+    while True:
+        try:
+            # Re-fetch active cameras every loop to capture updates
+            active_cams = list(db.cameras.find({"detection_enabled": True}))
+            
+            # Sync
+            container_manager.sync_detectors(active_cams)
+            
+        except Exception as e:
+            print(f"[api] Container sync error: {e}")
+        
+        time.sleep(10.0) # Check every 10 seconds
+
+@app.on_event("startup")
+async def startup_event():
+    # Start sync thread
+    t = threading.Thread(target=run_container_sync_loop, daemon=True)
+    t.start()
+
 MONGO_URI = os.getenv("MONGO_URI", "mongodb://127.0.0.1:27017")
 DB_NAME = "accident_db"
 client = MongoClient(MONGO_URI)

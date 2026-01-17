@@ -1,8 +1,9 @@
-#!/usr/bin/env python3
 """
 classifier_subscriber_async.py
 
 ASYNC VERSION with Hybrid Classifier:
+- Acts as the CENTRAL SERVER (Binds ZMQ SUB).
+- Accepts connections from multiple dynamic Detector containers.
 - Uses primary classifier for immediate detection (fast, 100% accident recall)
 - Queues hybrid verification in background thread (accurate, 89.80%)
 - Updates alerts with verification results
@@ -212,14 +213,21 @@ def main(zmq_host: str, zmq_port: int, mongo_uri: str, db_name: str, out_dir: st
         print(f"[subscriber] Failed to load system config: {e}")
 
 
-    # ZeroMQ SUB socket
+    # ZeroMQ SUB socket (Server - Binds)
     ctx = zmq.Context()
     sock = ctx.socket(zmq.SUB)
-    connect_addr = f"tcp://{zmq_host}:{zmq_port}"
-    sock.connect(connect_addr)
+    # Architecture Change: BIND instead of CONNECT
+    # The classifier is the stable "server" that dynamic detectors connect to.
+    bind_addr = f"tcp://*:{zmq_port}"
+    try:
+        sock.bind(bind_addr)
+        if verbose:
+            print(f"[subscriber] BOUND SUB socket -> {bind_addr}")
+    except zmq.ZMQError as e:
+        print(f"[subscriber] Failed to bind to {bind_addr}: {e}")
+        raise
+    
     sock.setsockopt_string(zmq.SUBSCRIBE, "")
-    if verbose:
-        print(f"[subscriber] Connected SUB -> {connect_addr}")
 
     # --- LPR Initialization ---
     try:
@@ -236,7 +244,7 @@ def main(zmq_host: str, zmq_port: int, mongo_uri: str, db_name: str, out_dir: st
     # --- Messaging Service ---
     try:
         from services.messaging_service import MessagingService
-        messaging_svc = MessagingService()
+        messaging_svc = MessagingService(mongo_uri=mongo_uri, db_name=db_name)
         print("[subscriber] MessagingService initialized")
     except Exception as e:
         print(f"[subscriber] Failed to init MessagingService: {e}")

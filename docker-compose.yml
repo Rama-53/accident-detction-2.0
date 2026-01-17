@@ -7,6 +7,30 @@ services:
     volumes:
       - mongo_data:/data/db
 
+  ai_core:
+    build:
+      context: .
+      dockerfile: Dockerfile.combined
+    container_name: accident_ai_core
+    restart: unless-stopped
+    ports:
+      - "5556:5556" # ZMQ Access
+      - "5001:5001" # MJPEG Stream
+    environment:
+      - MONGO_URI=mongodb://mongo:27017
+    volumes:
+      - ./accident_crops:/app/accident_crops
+      - ./videos:/app/videos
+    depends_on:
+      - mongo
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [ gpu ]
+
   api:
     build:
       context: .
@@ -17,65 +41,15 @@ services:
       - "8000:8000"
     environment:
       - MONGO_URI=mongodb://mongo:27017
-      - DETECTOR_STREAM_URL=http://localhost:5001/stream.mjpg
-      - DETECTOR_HEALTH_URL=http://detector:5001/stream.mjpg
+      # Hostname must match service name 'ai_core'
+      - DETECTOR_STREAM_URL=http://ai_core:5001/stream.mjpg
+      - DETECTOR_HEALTH_URL=http://ai_core:5001/stream.mjpg
     volumes:
       - ./accident_crops:/app/accident_crops
+      - /var/run/docker.sock:/var/run/docker.sock
     depends_on:
       - mongo
-      - detector
-
-  detector:
-    build:
-      context: .
-      dockerfile: Dockerfile.detector
-    container_name: accident_detector
-    # Running with cctv_eg.mp4 by default. 
-    # Important: The stream is on 5001, ZMQ publisher on 5556
-    command: python detector_publisher.py --video cctv_eg.mp4 --port 5556 --http-port 5001
-    ports:
-      - "5001:5001"
-      - "5556:5556"
-    environment:
-      - MONGO_URI=mongodb://mongo:27017
-    volumes:
-      - ./accident_crops:/app/accident_crops
-      - ./videos:/app/videos
-    # UNCOMMENT THE FOLLOWING LINES TO ENABLE WEBCAM PASS-THROUGH (Linux/WSL2 only)
-    # privileged: true
-    # devices:
-    #   - /dev/video0:/dev/video0
-    depends_on:
-      - mongo
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [ gpu ]
-
-  classifier:
-    build:
-      context: .
-      dockerfile: Dockerfile.classifier
-    container_name: accident_classifier
-    # Connects to 'detector' host on port 5556
-    command: python classifier_subscriber_async.py --host detector --port 5556 --mongo mongodb://mongo:27017 --db accident_db --outdir /app/accident_crops
-    environment:
-      - MONGO_URI=mongodb://mongo:27017
-    volumes:
-      - ./accident_crops:/app/accident_crops
-    depends_on:
-      - mongo
-      - detector
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [ gpu ]
+      - ai_core
 
   dashboard:
     build:
@@ -101,3 +75,8 @@ services:
 
 volumes:
   mongo_data:
+
+
+networks:
+  default:
+    name: accident_net

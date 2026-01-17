@@ -1,6 +1,6 @@
 pyzmq
 pymongo
-opencv-python
+opencv-python-headless
 ultralytics
 norfair
 numpy

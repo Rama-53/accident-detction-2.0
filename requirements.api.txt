@@ -1,6 +1,7 @@
 fastapi
 uvicorn
 python-multipart
+opencv-python-headless
 requests
 pymongo
 pandas
@@ -9,3 +10,4 @@ python-dateutil
 python-dotenv
 prometheus-client
 psutil
+docker
