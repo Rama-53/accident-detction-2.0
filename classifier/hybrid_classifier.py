@@ -16,9 +16,6 @@ class HybridAccidentClassifier:
     Strategy: Use model 1 as primary detector, model 2 to filter false alarms
     """
     
-    Strategy: Use model 1 as primary detector, model 2 to filter false alarms
-    """
-    
     def __init__(self, primary_model_path=None, secondary_model_path=None):
         # --- MONKEY PATCH FIX ---
         # Robustly handle 'quantization_config' error by patching Dense globally.
@@ -61,14 +58,13 @@ class HybridAccidentClassifier:
         # Load primary model (accidents.keras)
         try:
             print("[HybridClassifier] Loading primary model (accidents.keras)...")
-        try:
-            print("[HybridClassifier] Loading primary model (accidents.keras)...")
             self.primary_model = keras.models.load_model(primary_model_path)
             self.primary_img_size = (256, 256)  # accidents.keras uses 256x256
             print("[HybridClassifier] ✓ Primary model loaded")
         except Exception as e:
             print(f"[HybridClassifier] ERROR loading primary model: {e}")
             raise e
+
 
         # Load secondary model (ResNet50)
         try:
