@@ -30,13 +30,35 @@ services:
             - driver: nvidia
               count: 1
               capabilities: [ gpu ]
+    develop:
+      watch:
+        - action: sync
+          path: ./detector
+          target: /app/detector
+        - action: sync
+          path: ./classifier
+          target: /app/classifier
+        - action: sync
+          path: ./services
+          target: /app/services
+        - action: sync
+          path: ./utils
+          target: /app/utils
+        - action: sync
+          path: ./detector_publisher.py
+          target: /app/detector_publisher.py
+        - action: sync
+          path: ./classifier_subscriber.py
+          target: /app/classifier_subscriber.py
+        - action: rebuild
+          path: ./requirements.combined.txt
 
   api:
     build:
       context: .
       dockerfile: Dockerfile.api
     container_name: accident_api
-    command: uvicorn services.api_server:app --host 0.0.0.0 --port 8000
+    command: uvicorn services.api_server:app --host 0.0.0.0 --port 8000 --reload
     ports:
       - "8000:8000"
     environment:
@@ -50,6 +72,16 @@ services:
     depends_on:
       - mongo
       - ai_core
+    develop:
+      watch:
+        - action: sync
+          path: ./services
+          target: /app/services
+        - action: sync
+          path: ./utils
+          target: /app/utils
+        - action: rebuild
+          path: ./requirements.api.txt
 
   dashboard:
     build:
@@ -62,6 +94,21 @@ services:
       - VITE_API_URL=http://localhost:8000
     depends_on:
       - api
+    develop:
+      watch:
+        - action: sync
+          path: ./dashboard/src
+          target: /app/src
+          ignore:
+            - node_modules/
+        - action: sync
+          path: ./dashboard/index.html
+          target: /app/index.html
+        - action: sync
+          path: ./dashboard/vite.config.js
+          target: /app/vite.config.js
+        - action: rebuild
+          path: ./dashboard/package.json
 
   prometheus:
     image: prom/prometheus

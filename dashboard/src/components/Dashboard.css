@@ -7,6 +7,7 @@
     width: 100%;
     height: calc(100vh - 100px);
     padding-bottom: 20px;
+    overflow-y: auto;
 }
 
 .dashboard-grid {
@@ -15,7 +16,6 @@
     grid-template-rows: 1fr 1fr;
     gap: 20px;
     width: 100%;
-    flex: 1;
     min-height: 600px;
 }
 
@@ -46,11 +46,39 @@
     min-height: 0;
 }
 
+.dashboard-charts-row {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 20px;
+    width: 100%;
+    min-height: 400px;
+}
+
+.timeline-section {
+    display: flex;
+    flex-direction: column;
+    min-height: 400px;
+}
+
+.severity-section {
+    display: flex;
+    flex-direction: column;
+    min-height: 400px;
+}
+
 /* Ensure components fill their containers */
 .live-feed-section>*,
 .alerts-section>*,
-.map-section>* {
+.map-section>*,
+.timeline-section>*,
+.severity-section>* {
     height: 100%;
+}
+
+@media (max-width: 1400px) {
+    .dashboard-charts-row {
+        grid-template-columns: 1fr;
+    }
 }
 
 @media (max-width: 1200px) {
@@ -67,5 +95,14 @@
         grid-row: auto;
         height: 500px;
         /* specific height for mobile stacking */
+    }
+
+    .dashboard-charts-row {
+        grid-template-columns: 1fr;
+    }
+
+    .timeline-section,
+    .severity-section {
+        min-height: 400px;
     }
 }

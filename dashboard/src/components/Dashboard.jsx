@@ -4,6 +4,8 @@ import { LiveFeed } from './LiveFeed';
 import { CameraMap } from './CameraMap';
 import { AlertsList } from './AlertsList';
 import { StatsWidget } from './StatsWidget';
+import { IncidentTimeline } from './IncidentTimeline';
+import { SeverityChart } from './SeverityChart';
 import './Dashboard.css';
 
 const containerVariants = {
@@ -47,6 +49,17 @@ export function Dashboard() {
                     <CameraMap />
                 </motion.div>
             </div>
+
+            <div className="dashboard-charts-row">
+                <motion.div className="timeline-section" variants={itemVariants}>
+                    <IncidentTimeline />
+                </motion.div>
+
+                <motion.div className="severity-section" variants={itemVariants}>
+                    <SeverityChart />
+                </motion.div>
+            </div>
         </motion.div>
     );
 }
+

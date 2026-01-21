@@ -9,7 +9,6 @@ import {
     Sun,
     Moon
 } from 'lucide-react';
-import { motion } from 'framer-motion';
 import { useSystem } from '../context/SystemContext';
 import './Sidebar.css';
 
@@ -43,13 +42,6 @@ export function Sidebar() {
                             className={`nav-btn ${isActive ? 'active' : ''}`}
                             onClick={() => setActiveTab(item.id)}
                         >
-                            {isActive && (
-                                <motion.div
-                                    layoutId="active-tab"
-                                    className="active-background"
-                                    transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                                />
-                            )}
                             <div className="nav-icon-wrapper">
                                 <Icon size={20} />
                             </div>
