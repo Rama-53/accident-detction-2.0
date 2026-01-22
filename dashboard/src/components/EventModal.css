@@ -290,6 +290,8 @@
 .details-scroll-content {
     flex: 1;
     overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
     padding: 32px;
     display: flex;
     flex-direction: column;
@@ -663,4 +665,531 @@
 
 [data-theme="light"] .details-scroll-content::-webkit-scrollbar-thumb {
     background: rgba(0, 0, 0, 0.1);
+}
+
+/* ========== TECHNICAL UI STYLES ========== */
+
+.modal-technical {
+    border: 1px solid rgba(0, 255, 136, 0.1);
+    box-shadow:
+        0 50px 100px -20px rgba(0, 0, 0, 0.8),
+        0 0 60px rgba(0, 255, 136, 0.05),
+        inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+/* Technical Header */
+.technical-header {
+    background: linear-gradient(180deg, rgba(0, 255, 136, 0.03) 0%, transparent 100%);
+    border-bottom: 1px solid rgba(0, 255, 136, 0.1) !important;
+    padding: 24px 28px !important;
+}
+
+.header-status-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+}
+
+.status-indicator-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #71717a;
+}
+
+.status-dot.active {
+    background: #30d158;
+    box-shadow: 0 0 8px rgba(48, 209, 88, 0.6);
+    animation: statusPulse 2s ease-in-out infinite;
+}
+
+@keyframes statusPulse {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.5;
+    }
+}
+
+.status-label {
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    color: #30d158;
+    font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+}
+
+.event-id-hex {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+    font-size: 0.75rem;
+    color: #8b8b8e;
+    cursor: pointer;
+    padding: 4px 10px;
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    transition: all 0.2s;
+}
+
+.event-id-hex:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(0, 255, 136, 0.3);
+    color: #00ff88;
+}
+
+.hex-prefix {
+    color: #00ff88;
+    opacity: 0.7;
+}
+
+.header-main {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.severity-badge-tech {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+    width: fit-content;
+}
+
+.severity-badge-tech.high,
+.severity-badge-tech.critical {
+    background: rgba(255, 51, 102, 0.15);
+    color: #ff3366;
+    border: 1px solid rgba(255, 51, 102, 0.3);
+    box-shadow: 0 0 20px rgba(255, 51, 102, 0.2);
+    animation: criticalPulse 1.5s ease-in-out infinite;
+}
+
+.severity-badge-tech.medium {
+    background: rgba(255, 159, 10, 0.15);
+    color: #ff9f0a;
+    border: 1px solid rgba(255, 159, 10, 0.3);
+}
+
+.severity-badge-tech.low {
+    background: rgba(48, 209, 88, 0.15);
+    color: #30d158;
+    border: 1px solid rgba(48, 209, 88, 0.3);
+}
+
+@keyframes criticalPulse {
+
+    0%,
+    100% {
+        box-shadow: 0 0 20px rgba(255, 51, 102, 0.2);
+    }
+
+    50% {
+        box-shadow: 0 0 30px rgba(255, 51, 102, 0.4), 0 0 60px rgba(255, 51, 102, 0.1);
+    }
+}
+
+.event-title-tech {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin: 0;
+    color: white;
+    letter-spacing: 0.02em;
+    line-height: 1.2;
+}
+
+/* Confidence Section */
+.confidence-section {
+    margin-top: 20px;
+    padding: 16px;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.confidence-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.confidence-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    color: #8b8b8e;
+    font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+}
+
+.confidence-value {
+    font-size: 1.25rem;
+    font-weight: 800;
+    color: white;
+    font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+}
+
+.confidence-meter {
+    height: 6px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.confidence-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 0 10px currentColor;
+}
+
+/* Tech Sections */
+.tech-section {
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 10px;
+    padding: 16px;
+    margin-bottom: 16px;
+}
+
+.section-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    color: #8b8b8e;
+    margin-bottom: 14px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+}
+
+.section-header svg {
+    color: #00ff88;
+    opacity: 0.8;
+}
+
+/* Metrics Grid */
+.metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+}
+
+.metric-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.04);
+    border-radius: 8px;
+    transition: all 0.2s;
+}
+
+.metric-card:hover {
+    background: rgba(255, 255, 255, 0.04);
+    border-color: rgba(0, 255, 136, 0.2);
+}
+
+.metric-icon {
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 255, 136, 0.1);
+    border-radius: 8px;
+    color: #00ff88;
+    flex-shrink: 0;
+}
+
+.metric-data {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.metric-label {
+    font-size: 0.6rem;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    color: #71717a;
+    text-transform: uppercase;
+}
+
+.metric-value {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #e4e4e7;
+}
+
+.metric-value.mono {
+    font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+}
+
+/* Telemetry Grid */
+.telemetry-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.telemetry-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+.telemetry-label {
+    font-size: 0.6rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    color: #71717a;
+    font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+}
+
+.telemetry-value {
+    font-size: 0.8rem;
+    color: #e4e4e7;
+    text-align: right;
+    max-width: 60%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.telemetry-value.mono {
+    font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+    color: #a1a1aa;
+}
+
+.telemetry-value.text-sm {
+    font-size: 0.7rem;
+}
+
+.sector-highlight {
+    color: #3b82f6 !important;
+    font-weight: 600;
+    font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+}
+
+.time-highlight {
+    color: #00ff88 !important;
+    font-weight: 600;
+}
+
+/* Recording indicator */
+.info-message.recording {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 16px;
+    background: rgba(255, 51, 102, 0.1);
+    border: 1px solid rgba(255, 51, 102, 0.2);
+    border-radius: 8px;
+    color: #ff3366;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+}
+
+.recording-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #ff3366;
+    animation: recordingBlink 1s ease-in-out infinite;
+}
+
+@keyframes recordingBlink {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.3;
+    }
+}
+
+/* ========== LIGHT MODE TECHNICAL STYLES ========== */
+
+[data-theme="light"] .modal-technical {
+    border: 1px solid rgba(0, 100, 50, 0.1);
+    box-shadow: 0 25px 80px -20px rgba(0, 0, 0, 0.25);
+}
+
+[data-theme="light"] .technical-header {
+    background: linear-gradient(180deg, rgba(0, 150, 100, 0.03) 0%, transparent 100%);
+    border-bottom: 1px solid rgba(0, 150, 100, 0.1) !important;
+}
+
+[data-theme="light"] .status-label {
+    color: #059669;
+}
+
+[data-theme="light"] .status-dot.active {
+    background: #059669;
+    box-shadow: 0 0 8px rgba(5, 150, 105, 0.4);
+}
+
+[data-theme="light"] .event-id-hex {
+    background: rgba(0, 0, 0, 0.03);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    color: #6b7280;
+}
+
+[data-theme="light"] .event-id-hex:hover {
+    background: rgba(0, 0, 0, 0.06);
+    border-color: rgba(5, 150, 105, 0.4);
+    color: #059669;
+}
+
+[data-theme="light"] .hex-prefix {
+    color: #059669;
+}
+
+[data-theme="light"] .event-title-tech {
+    color: #111827;
+}
+
+[data-theme="light"] .severity-badge-tech.high,
+[data-theme="light"] .severity-badge-tech.critical {
+    background: rgba(220, 38, 38, 0.1);
+    color: #dc2626;
+    border: 1px solid rgba(220, 38, 38, 0.25);
+    box-shadow: 0 2px 8px rgba(220, 38, 38, 0.15);
+}
+
+[data-theme="light"] .severity-badge-tech.medium {
+    background: rgba(234, 88, 12, 0.1);
+    color: #ea580c;
+    border: 1px solid rgba(234, 88, 12, 0.25);
+}
+
+[data-theme="light"] .severity-badge-tech.low {
+    background: rgba(22, 163, 74, 0.1);
+    color: #16a34a;
+    border: 1px solid rgba(22, 163, 74, 0.25);
+}
+
+[data-theme="light"] .confidence-section {
+    background: rgba(0, 0, 0, 0.02);
+    border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+[data-theme="light"] .confidence-label {
+    color: #6b7280;
+}
+
+[data-theme="light"] .confidence-value {
+    color: #111827;
+}
+
+[data-theme="light"] .confidence-meter {
+    background: rgba(0, 0, 0, 0.08);
+}
+
+[data-theme="light"] .tech-section {
+    background: rgba(0, 0, 0, 0.02);
+    border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+[data-theme="light"] .section-header {
+    color: #6b7280;
+    border-bottom-color: rgba(0, 0, 0, 0.06);
+}
+
+[data-theme="light"] .section-header svg {
+    color: #059669;
+}
+
+[data-theme="light"] .metric-card {
+    background: rgba(0, 0, 0, 0.02);
+    border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+[data-theme="light"] .metric-card:hover {
+    background: rgba(0, 0, 0, 0.04);
+    border-color: rgba(5, 150, 105, 0.3);
+}
+
+[data-theme="light"] .metric-icon {
+    background: rgba(5, 150, 105, 0.1);
+    color: #059669;
+}
+
+[data-theme="light"] .metric-label {
+    color: #6b7280;
+}
+
+[data-theme="light"] .metric-value {
+    color: #1f2937;
+}
+
+[data-theme="light"] .telemetry-row {
+    background: rgba(0, 0, 0, 0.02);
+    border: 1px solid rgba(0, 0, 0, 0.04);
+}
+
+[data-theme="light"] .telemetry-label {
+    color: #6b7280;
+}
+
+[data-theme="light"] .telemetry-value {
+    color: #374151;
+}
+
+[data-theme="light"] .telemetry-value.mono {
+    color: #6b7280;
+}
+
+[data-theme="light"] .sector-highlight {
+    color: #2563eb !important;
+}
+
+[data-theme="light"] .time-highlight {
+    color: #059669 !important;
+}
+
+[data-theme="light"] .info-message.recording {
+    background: rgba(220, 38, 38, 0.08);
+    border: 1px solid rgba(220, 38, 38, 0.15);
+    color: #dc2626;
+}
+
+[data-theme="light"] .recording-dot {
+    background: #dc2626;
 }
