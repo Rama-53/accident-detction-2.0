@@ -9,12 +9,24 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 
-# Install Python dependencies
+# Install Python dependencies FIRST (this layer will be cached)
 COPY requirements.combined.txt .
 RUN pip install --upgrade pip && pip install -r requirements.combined.txt
 
-# Copy source code
-COPY . .
+# Copy model files (large but don't change often, so cached separately)
+COPY *.keras *.pt ./
+
+# Copy video file for detector
+COPY cctv_eg.mp4 ./
+
+# Copy source code LAST (changes frequently, won't invalidate pip install cache)
+COPY detector/ ./detector/
+COPY classifier/ ./classifier/
+COPY services/ ./services/
+COPY utils/ ./utils/
+COPY config/ ./config/
+COPY detector_publisher.py classifier_subscriber.py classifier_subscriber_async.py ./
+COPY start_services.sh ./
 
 # Make entrypoint executable and fix line endings (crucial for Windows builds)
 RUN sed -i 's/\r$//' start_services.sh && chmod +x start_services.sh

@@ -1,18 +1,32 @@
 # Version Control
-.git
+.git/
 .gitignore
+.gitattributes
+.github/
 
 # Python / Environment
-.venv
-.venev2
-.venv_wsl
-__pycache__
+.venv/
+.venv2/
+.venv_wsl/
+__pycache__/
 *.pyc
 *.pyo
 *.pyd
+.pytest_cache/
+*.egg-info/
 
 # Dependencies
-node_modules
+node_modules/
+
+# Large Model Files (719MB issue - these are copied via COPY command when needed)
+*.keras
+*.h5
+*.pt
+*.onnx
+*.pb
+resnet50_phase2_best.keras
+yolo11n.pt
+license_plate_detector.pt
 
 # Data & Media (Mounted via volumes, not needed in image)
 accident_crops/
@@ -21,11 +35,34 @@ experiments/
 temp_uploads/
 logs/
 reports/
+debug/
+misc/
 
-# Dashboard (Built separately)
-dashboard/node_modules
-dashboard/dist
+# Dashboard (Built separately - ENTIRE folder excluded from ai_core build)
+dashboard/
 
-# IDEs
-.vscode
-.idea
+# Documentation & Config
+*.md
+!requirements*.txt
+docs/
+.dockerignore
+docker-compose.yml
+*.bat
+*.sh
+!start_services.sh
+
+# IDE & Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS Files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.log
+*.bak

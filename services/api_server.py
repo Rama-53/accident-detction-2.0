@@ -198,7 +198,7 @@ VIDEO_SOURCES: Dict[str, Dict[str, Any]] = {
         "camera_id": "custom_webcam",
     },
 }
-DEFAULT_VIDEO_SOURCE_ID = "demo_cam_main"
+DEFAULT_VIDEO_SOURCE_ID = "detector_stream"
 
 # Derived metadata for quick lookup
 CAMERA_METADATA = {

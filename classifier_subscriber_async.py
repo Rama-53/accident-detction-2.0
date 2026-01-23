@@ -36,6 +36,7 @@ BUFFER_SECONDS = 5
 POST_EVENT_SECONDS = 5
 FPS = 30
 VERIFICATION_QUEUE_SIZE = 50  # Max pending verifications
+MAX_SNAPSHOTS_PER_ALERT = 50  # Max snapshots per alert (prevents DB bloat)
 
 class CameraState:
     def __init__(self, history_len=10, cooldown_len=10):
@@ -375,6 +376,12 @@ def main(zmq_host: str, zmq_port: int, mongo_uri: str, db_name: str, out_dir: st
                 # If detector sent crops, use those
                 if crops_b64:
                     for i, crop_b64 in enumerate(crops_b64):
+                        # Enforce snapshot limit
+                        if len(crops_meta) >= MAX_SNAPSHOTS_PER_ALERT:
+                            if verbose:
+                                print(f"[subscriber] ⚠️  Snapshot limit reached ({MAX_SNAPSHOTS_PER_ALERT}). Skipping remaining {len(crops_b64) - i} crops.")
+                            break
+                        
                         try:
                             crop_img = decode_b64_to_pil(crop_b64)
                             timestamp = datetime.now(timezone.utc).replace(tzinfo=None).strftime("%Y%m%dT%H%M%S%f")[:-3]

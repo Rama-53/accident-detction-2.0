@@ -1,26 +1,325 @@
 /* src/components/CameraWall.css */
 
-.camera-wall-panel {
+/* ========== CONTAINER LAYOUT ========== */
+.camera-wall-container {
     width: 100%;
+    height: calc(100vh - 80px);
+    display: flex;
+    gap: 20px;
     padding: 20px;
 }
 
-.camera-wall-panel .panel-header {
+/* ========== SIDEBAR ========== */
+.camera-sidebar {
+    width: 320px;
+    min-width: 320px;
+    background: var(--surface-card);
+    border: 1px solid var(--glass-border);
+    border-radius: 16px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    overflow: hidden;
+}
+
+.sidebar-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 20px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--glass-border);
 }
 
-.camera-wall-panel .panel-title {
+.sidebar-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-main);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin: 0;
+}
+
+.sidebar-count {
+    font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--primary);
+    background: var(--primary-bg);
+    padding: 4px 10px;
+    border-radius: 20px;
+}
+
+/* Search Bar */
+.sidebar-search {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--surface-dark);
+    border: 1px solid var(--glass-border);
+    border-radius: 10px;
+    padding: 8px 12px;
+    transition: all 0.2s;
+}
+
+.sidebar-search:focus-within {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px var(--primary-bg);
+}
+
+.sidebar-search svg {
+    color: var(--text-dimmed);
+    flex-shrink: 0;
+}
+
+.sidebar-search input {
+    flex: 1;
+    background: none;
+    border: none;
+    outline: none;
+    color: var(--text-main);
+    font-size: 13px;
+}
+
+.sidebar-search input::placeholder {
+    color: var(--text-dimmed);
+}
+
+.search-clear {
+    background: none;
+    border: none;
+    color: var(--text-dimmed);
+    cursor: pointer;
+    padding: 2px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    transition: all 0.2s;
+}
+
+.search-clear:hover {
+    background: var(--surface-card-hover);
+    color: var(--text-main);
+}
+
+/* Quick Actions */
+.sidebar-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.action-btn-sm {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 8px 12px;
+    background: var(--primary-bg);
+    border: 1px solid var(--primary);
+    border-radius: 8px;
+    color: var(--primary);
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.action-btn-sm:hover:not(:disabled) {
+    background: var(--primary);
+    color: white;
+    transform: translateY(-1px);
+}
+
+.action-btn-sm.secondary {
+    background: var(--surface-card-hover);
+    border-color: var(--glass-border);
+    color: var(--text-muted);
+}
+
+.action-btn-sm.secondary:hover:not(:disabled) {
+    background: var(--surface-dark);
+    border-color: var(--text-dimmed);
+    color: var(--text-main);
+}
+
+.action-btn-sm:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+/* Camera List */
+.camera-list {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding-right: 4px;
+}
+
+.camera-list::-webkit-scrollbar {
+    width: 6px;
+}
+
+.camera-list::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.camera-list::-webkit-scrollbar-thumb {
+    background: var(--glass-border);
+    border-radius: 3px;
+}
+
+.camera-list::-webkit-scrollbar-thumb:hover {
+    background: var(--text-dimmed);
+}
+
+/* Camera Cards */
+.camera-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    background: var(--surface-dark);
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.camera-card:hover:not(.disabled) {
+    background: var(--surface-card-hover);
+    border-color: var(--primary);
+    transform: translateX(2px);
+}
+
+.camera-card.selected {
+    background: var(--primary-bg);
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.camera-card.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.card-checkbox {
+    flex-shrink: 0;
+}
+
+.check-icon {
+    color: var(--text-dimmed);
+    transition: all 0.2s;
+}
+
+.check-icon.selected {
+    color: var(--primary);
+}
+
+.card-content {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+}
+
+.camera-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-main);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.status-indicator {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: var(--surface-card-hover);
+    color: var(--text-dimmed);
+    text-transform: uppercase;
+}
+
+.status-indicator.active {
+    background: var(--accent-bg);
+    color: var(--accent);
+}
+
+.card-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.camera-id {
+    font-size: 11px;
+    font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+    color: var(--text-dimmed);
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.card-ai-toggle {
+    flex-shrink: 0;
+}
+
+/* No Results */
+.no-results {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 40px 20px;
+    color: var(--text-dimmed);
+    text-align: center;
+}
+
+.no-results svg {
+    opacity: 0.3;
+}
+
+/* ========== MAIN FEED AREA ========== */
+.feed-display-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    min-width: 0;
+}
+
+.feed-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.feed-title {
     display: flex;
     align-items: center;
     gap: 10px;
-    font-size: 14px;
+    font-size: 18px;
     font-weight: 600;
-    color: var(--text-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
+    color: var(--text-main);
+    margin: 0;
 }
 
 .layout-switcher {
@@ -74,133 +373,9 @@
     border-radius: 2px;
 }
 
-/* Multi Feed Controls */
-.multi-feed-controls {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-    gap: 10px;
-    margin-bottom: 20px;
-}
-
-.multi-feed-option {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-    padding: 10px 14px;
-    background: var(--surface-card);
-    border-radius: 12px;
-    border: 1px solid var(--glass-border);
-    transition: all 0.2s ease;
-}
-
-.multi-feed-option.selected {
-    background: var(--primary-bg);
-    border-color: var(--primary-bg-hover);
-}
-
-.camera-checkbox {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    cursor: pointer;
-    flex: 1;
-}
-
-.camera-checkbox input {
-    display: none;
-}
-
-.checkbox-box {
-    width: 18px;
-    height: 18px;
-    border-radius: 5px;
-    border: 1px solid var(--glass-border);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: transparent;
-    transition: all 0.2s ease;
-}
-
-.checkbox-box.checked {
-    background: var(--primary);
-    border-color: var(--primary);
-}
-
-.checkbox-check {
-    width: 8px;
-    height: 8px;
-    background: #fff;
-    border-radius: 2px;
-}
-
-.camera-name {
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--text-muted);
-    transition: color 0.2s ease;
-}
-
-.multi-feed-option.selected .camera-name {
-    color: var(--text-main);
-}
-
-.ai-toggle {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 4px;
-    cursor: pointer;
-}
-
-.ai-toggle input {
-    display: none;
-}
-
-.ai-toggle .toggle-track {
-    width: 28px;
-    height: 16px;
-    background: var(--surface-card-hover);
-    border-radius: 99px;
-    position: relative;
-    transition: all 0.2s ease;
-}
-
-.ai-toggle .toggle-track.on {
-    background: var(--accent-bg);
-}
-
-.ai-toggle .toggle-thumb {
-    position: absolute;
-    top: 2px;
-    left: 2px;
-    width: 12px;
-    height: 12px;
-    background: var(--text-dimmed);
-    border-radius: 50%;
-    transition: all 0.2s ease;
-}
-
-.ai-toggle .toggle-track.on .toggle-thumb {
-    left: 12px;
-    background: var(--accent);
-    box-shadow: 0 0 8px var(--accent-glow);
-}
-
-.ai-label {
-    font-size: 9px;
-    font-weight: 600;
-    color: var(--text-dimmed);
-    text-transform: uppercase;
-}
-
-.ai-label.active {
-    color: var(--success-text);
-}
-
 /* Wall Grid Layouts */
 .wall-grid {
+    flex: 1;
     min-height: 400px;
     transition: all 0.3s ease;
 }
@@ -241,13 +416,21 @@
 }
 
 .wall-feed-card {
-    aspect-ratio: 16/9;
     position: relative;
     background: var(--surface-dark);
     border-radius: 16px;
     overflow: hidden;
     border: 1px solid var(--glass-border);
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+    height: 100%;
+    /* Respect grid cell height */
+    width: 100%;
+}
+
+/* Auto mode needs aspect-ratio for flexible card sizing */
+.wall-grid-auto .wall-feed-card {
+    aspect-ratio: 16/9;
+    height: auto;
 }
 
 .wall-feed-card img {
@@ -300,4 +483,54 @@
 
 .wall-placeholder svg {
     opacity: 0.3;
+}
+
+/* ========== ANIMATIONS ========== */
+.animate-scale-in {
+    animation: scaleIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes scaleIn {
+    from {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+/* ========== RESPONSIVE ========== */
+@media (max-width: 1024px) {
+    .camera-wall-container {
+        flex-direction: column;
+        height: auto;
+    }
+
+    .camera-sidebar {
+        width: 100%;
+        max-height: 300px;
+    }
+
+    .feed-display-area {
+        min-height: 500px;
+    }
+}
+
+@media (max-width: 768px) {
+
+    .wall-grid-2x2,
+    .wall-grid-focus {
+        grid-template-columns: 1fr;
+    }
+
+    .wall-grid-focus .wall-feed-card:first-child {
+        grid-row: auto;
+    }
+
+    .sidebar-actions {
+        flex-direction: column;
+    }
 }

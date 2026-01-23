@@ -21,6 +21,8 @@ services:
     volumes:
       - ./accident_crops:/app/accident_crops
       - ./videos:/app/videos
+      - ./cctv_eg.mp4:/app/cctv_eg.mp4
+      - ./temp_uploads:/app/temp_uploads
     depends_on:
       - mongo
     deploy:

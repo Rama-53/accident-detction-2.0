@@ -1,6 +1,6 @@
 // src/components/AlertsPage.jsx
 import { useState, useMemo } from 'react';
-import { AlertTriangle, MapPin, Search, Filter, SortAsc, ChevronDown, X } from 'lucide-react';
+import { AlertTriangle, MapPin, Search, X, RotateCcw, Calendar, Camera, TrendingDown } from 'lucide-react';
 import { BACKEND_URL } from '../config';
 import PremiumInput from './PremiumInput';
 import { useSystem } from '../context/SystemContext';
@@ -52,7 +52,7 @@ export function AlertsPage() {
                 result.sort((a, b) => a.time - b.time);
                 break;
             case 'severity':
-                const severityOrder = { high: 0, medium: 1, low: 2 };
+                const severityOrder = { high: 0, critical: 0, medium: 1, low: 2 };
                 result.sort((a, b) =>
                     (severityOrder[a.severity?.toLowerCase()] || 2) -
                     (severityOrder[b.severity?.toLowerCase()] || 2)
@@ -86,66 +86,94 @@ export function AlertsPage() {
     };
 
     return (
-        <div className="glass-panel alerts-page-panel animate-slide-up">
-            <div className="panel-header">
-                <div className="panel-title">
-                    <AlertTriangle size={18} />
-                    <span>Alert History</span>
-                    <span className="event-count">{filteredEvents.length} events</span>
+        <div className="alerts-page-container">
+            {/* SIDEBAR: Filters */}
+            <aside className="alerts-sidebar">
+                <div className="sidebar-header">
+                    <h3 className="sidebar-title">
+                        <AlertTriangle size={16} />
+                        <span>Filters</span>
+                    </h3>
+                    <span className="result-count">{filteredEvents.length}</span>
                 </div>
-            </div>
 
-            {/* Enhanced Filters Bar */}
-            <div className="filters-bar">
-                {/* Search Input */}
-                <div className="search-wrapper">
-                    <Search size={16} className="search-icon" />
-                    <input
-                        type="text"
-                        placeholder="Search camera, location..."
-                        value={searchQuery}
-                        onChange={e => setSearchQuery(e.target.value)}
-                        className="search-input"
-                    />
-                    {searchQuery && (
-                        <button className="clear-search" onClick={() => setSearchQuery('')}>
-                            <X size={14} />
+                {/* Search */}
+                <div className="filter-section">
+                    <label className="filter-label">Search</label>
+                    <div className="search-input-wrapper">
+                        <Search size={14} className="search-icon" />
+                        <input
+                            type="text"
+                            placeholder="Camera, location..."
+                            value={searchQuery}
+                            onChange={e => setSearchQuery(e.target.value)}
+                            className="filter-input"
+                        />
+                        {searchQuery && (
+                            <button className="clear-btn" onClick={() => setSearchQuery('')}>
+                                <X size={14} />
+                            </button>
+                        )}
+                    </div>
+                </div>
+
+                {/* Severity Pills */}
+                <div className="filter-section">
+                    <label className="filter-label">Severity Level</label>
+                    <div className="severity-pills">
+                        <button
+                            className={`severity-pill ${severityFilter === 'all' ? 'active' : ''}`}
+                            onClick={() => setSeverityFilter('all')}
+                        >
+                            All
                         </button>
-                    )}
+                        <button
+                            className={`severity-pill high ${severityFilter === 'high' ? 'active' : ''}`}
+                            onClick={() => setSeverityFilter('high')}
+                        >
+                            High
+                        </button>
+                        <button
+                            className={`severity-pill medium ${severityFilter === 'medium' ? 'active' : ''}`}
+                            onClick={() => setSeverityFilter('medium')}
+                        >
+                            Medium
+                        </button>
+                        <button
+                            className={`severity-pill low ${severityFilter === 'low' ? 'active' : ''}`}
+                            onClick={() => setSeverityFilter('low')}
+                        >
+                            Low
+                        </button>
+                    </div>
                 </div>
 
-                {/* Severity Filter */}
-                <div className="filter-group">
-                    <Filter size={14} />
+                {/* Camera Source */}
+                <div className="filter-section">
+                    <label className="filter-label">
+                        <Camera size={14} />
+                        Camera Source
+                    </label>
                     <select
-                        value={severityFilter}
-                        onChange={e => setSeverityFilter(e.target.value)}
-                        className="glass-input filter-select"
+                        value={selectedCamera || 'all'}
+                        onChange={e => setSelectedCamera(e.target.value)}
+                        className="filter-input"
                     >
-                        <option value="all">All Severities</option>
-                        <option value="high">High</option>
-                        <option value="medium">Medium</option>
-                        <option value="low">Low</option>
+                        <option value="all">All Cameras</option>
+                        {cameras.map(c => <option key={c} value={c}>{c}</option>)}
                     </select>
                 </div>
 
-                {/* Camera Filter */}
-                <select
-                    value={selectedCamera || 'all'}
-                    onChange={e => setSelectedCamera(e.target.value)}
-                    className="glass-input filter-select"
-                >
-                    <option value="all">All Cameras</option>
-                    {cameras.map(c => <option key={c} value={c}>{c}</option>)}
-                </select>
-
-                {/* Sort */}
-                <div className="filter-group">
-                    <SortAsc size={14} />
+                {/* Sort By */}
+                <div className="filter-section">
+                    <label className="filter-label">
+                        <TrendingDown size={14} />
+                        Sort By
+                    </label>
                     <select
                         value={sortBy}
                         onChange={e => setSortBy(e.target.value)}
-                        className="glass-input filter-select"
+                        className="filter-input"
                     >
                         <option value="newest">Newest First</option>
                         <option value="oldest">Oldest First</option>
@@ -153,91 +181,107 @@ export function AlertsPage() {
                     </select>
                 </div>
 
-                {/* Date Filters */}
-                <div style={{ width: '180px' }}>
-                    <PremiumInput
-                        type="datetime-local"
-                        value={filterStartTime}
-                        onChange={e => setFilterStartTime(e.target.value)}
-                        style={{ height: '38px' }}
-                    />
-                </div>
-                <div style={{ width: '180px' }}>
-                    <PremiumInput
-                        type="datetime-local"
-                        value={filterEndTime}
-                        onChange={e => setFilterEndTime(e.target.value)}
-                        style={{ height: '38px' }}
-                    />
+                {/* Date Range */}
+                <div className="filter-section">
+                    <label className="filter-label">
+                        <Calendar size={14} />
+                        Date Range
+                    </label>
+                    <div className="date-inputs">
+                        <PremiumInput
+                            type="datetime-local"
+                            value={filterStartTime}
+                            onChange={e => setFilterStartTime(e.target.value)}
+                            placeholder="From"
+                        />
+                        <PremiumInput
+                            type="datetime-local"
+                            value={filterEndTime}
+                            onChange={e => setFilterEndTime(e.target.value)}
+                            placeholder="To"
+                        />
+                    </div>
                 </div>
 
-                <button className="btn-secondary btn-reset" onClick={resetFilters}>
-                    Reset
+                {/* Reset Button */}
+                <button className="reset-filters-btn" onClick={resetFilters}>
+                    <RotateCcw size={14} />
+                    Reset All Filters
                 </button>
-            </div>
+            </aside>
 
-            {/* Event List with Lazy Loading */}
-            <div className="full-event-list">
-                {visibleEvents.map((e, index) => {
-                    const dateObj = new Date(e.time * 1000);
-                    const dateStr = dateObj.toLocaleDateString();
-                    const timeStr = dateObj.toLocaleTimeString();
+            {/* MAIN AREA: Events */}
+            <main className="alerts-main-area">
+                <div className="alerts-header">
+                    <h2 className="alerts-title">Alert History</h2>
+                    <span className="total-count">{filteredEvents.length} events</span>
+                </div>
 
-                    return (
-                        <div
-                            key={e.id}
-                            className={`full-event-card severity-${(e.severity || 'medium').toLowerCase()}`}
-                            onClick={() => setActiveEvent(e)}
-                            style={{ animationDelay: `${Math.min(index, 10) * 0.03}s` }}
-                        >
-                            <div className="severity-indicator"></div>
-                            <div className="card-thumb-wrapper">
-                                {e.snapshot_id ? (
-                                    <img
-                                        src={`${BACKEND_URL}/snapshot/${e.snapshot_id}`}
-                                        className="card-thumb"
-                                        alt="snapshot"
-                                        loading="lazy"
-                                        onError={ev => ev.target.style.display = 'none'}
-                                    />
-                                ) : (
-                                    <div className="no-thumb">No Image</div>
-                                )}
-                            </div>
+                {/* Event Grid */}
+                <div className="event-grid">
+                    {visibleEvents.map((e, index) => {
+                        const dateObj = new Date(e.time * 1000);
+                        const dateStr = dateObj.toLocaleDateString();
+                        const timeStr = dateObj.toLocaleTimeString();
 
-                            <div className="card-details">
-                                <div className="card-header">
-                                    <span className="card-camera">{e.camera_name || e.camera_id}</span>
-                                    <span className={`severity-badge severity-${(e.severity || 'medium').toLowerCase()}`}>
-                                        {e.severity || 'Medium'}
-                                    </span>
+                        return (
+                            <div
+                                key={e.id}
+                                className={`event-card severity-${(e.severity || 'medium').toLowerCase()}`}
+                                onClick={() => setActiveEvent(e)}
+                                style={{ animationDelay: `${Math.min(index, 10) * 0.03}s` }}
+                            >
+                                <div className="severity-stripe"></div>
+                                <div className="card-image">
+                                    {e.snapshot_id ? (
+                                        <img
+                                            src={`${BACKEND_URL}/snapshot/${e.snapshot_id}`}
+                                            alt="snapshot"
+                                            loading="lazy"
+                                            onError={ev => ev.target.style.display = 'none'}
+                                        />
+                                    ) : (
+                                        <div className="no-image">
+                                            <AlertTriangle size={32} />
+                                        </div>
+                                    )}
                                 </div>
-                                <div className="card-location">
-                                    <MapPin size={12} />
-                                    {e.location || 'Unknown'}
+
+                                <div className="card-content">
+                                    <div className="card-header-row">
+                                        <span className="card-camera">{e.camera_name || e.camera_id}</span>
+                                        <span className={`severity-badge severity-${(e.severity || 'medium').toLowerCase()}`}>
+                                            {e.severity || 'Medium'}
+                                        </span>
+                                    </div>
+                                    <div className="card-location">
+                                        <MapPin size={12} />
+                                        {e.location || 'Unknown'}
+                                    </div>
+                                    <div className="card-time">
+                                        <div className="time-display">{timeStr}</div>
+                                        <div className="date-display">{dateStr}</div>
+                                    </div>
                                 </div>
                             </div>
+                        );
+                    })}
 
-                            <div className="card-time">
-                                <div className="time-main">{timeStr}</div>
-                                <div className="date-sub">{dateStr}</div>
-                            </div>
+                    {/* Load More Button */}
+                    {hasMore && (
+                        <button className="load-more-btn" onClick={loadMore}>
+                            Load More ({filteredEvents.length - visibleCount} remaining)
+                        </button>
+                    )}
+
+                    {filteredEvents.length === 0 && (
+                        <div className="empty-state">
+                            <AlertTriangle size={48} />
+                            <span>No alerts found matching filters.</span>
                         </div>
-                    );
-                })}
-
-                {/* Load More Button */}
-                {hasMore && (
-                    <button className="load-more-btn" onClick={loadMore}>
-                        <ChevronDown size={18} />
-                        Load More ({filteredEvents.length - visibleCount} remaining)
-                    </button>
-                )}
-
-                {filteredEvents.length === 0 && (
-                    <div className="empty-state">No alerts found matching filters.</div>
-                )}
-            </div>
+                    )}
+                </div>
+            </main>
         </div>
     );
 }
