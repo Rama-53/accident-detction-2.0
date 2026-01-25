@@ -1,5 +1,6 @@
 // src/components/LiveFeed.jsx
 import { Camera } from 'lucide-react';
+import { CameraSelector } from './CameraSelector';
 import { BACKEND_URL } from '../config';
 import AnalyzeButton from './AnalyzeButton';
 import PremiumInput from './PremiumInput';
@@ -33,19 +34,11 @@ export function LiveFeed() {
                     <span>Live Feed</span>
                 </div>
                 <div className="feed-controls">
-                    <select
+                    <CameraSelector
+                        options={videoSources}
                         value={selectedVideoSource}
-                        onChange={(e) => setSelectedVideoSource(e.target.value)}
-                        className="feed-select"
-                    >
-                        {videoSources.length === 0 ? (
-                            <option>No sources</option>
-                        ) : (
-                            videoSources.map(s => (
-                                <option key={s.id} value={s.id}>{s.label}</option>
-                            ))
-                        )}
-                    </select>
+                        onChange={setSelectedVideoSource}
+                    />
 
                     {selectedVideoSource && (
                         <div style={{ marginLeft: '10px' }}>
