@@ -305,6 +305,8 @@
 
 /* Event Cards */
 .event-card {
+    display: flex;
+    flex-direction: column;
     position: relative;
     background: var(--surface-card);
     border: 1px solid var(--glass-border);
@@ -404,9 +406,10 @@
     font-size: 13px;
     font-weight: 600;
     color: var(--text-main);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    /* overflow: hidden; */
+    /* text-overflow: ellipsis; */
+    /* white-space: nowrap; */
+    word-break: break-word;
 }
 
 .severity-badge {

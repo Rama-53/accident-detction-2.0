@@ -14,6 +14,7 @@ import threading
 from typing import Any
 from pathlib import Path
 from copy import deepcopy
+from collections import deque
 
 import zmq
 import cv2
@@ -210,7 +211,7 @@ def main(
                 except Exception as e:
                     print(f"[publisher] Config poll error: {e}")
                 
-                time.sleep(1.0)
+                time.sleep(0.1)
         except Exception as e:
             print(f"[publisher] Failed to connect to DB for polling: {e}")
 
@@ -337,6 +338,8 @@ def main(
     print("[publisher] AccidentDetector initialized.")
 
     frame_idx = 0
+    fps_history = deque(maxlen=30)
+    current_fps = 0.0
     try:
         while True:
             # Check for source switch
@@ -483,6 +486,18 @@ def main(
                     x1, y1, x2, y2 = map(int, xyxy)
                     cv2.rectangle(vis_frame, (x1, y1), (x2, y2), color, 2)
                     cv2.putText(vis_frame, f"{cls_name} {tid}", (x1, y1 - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
+            
+            # Draw FPS
+            now_fps = time.time()
+            dt = now_fps - loop_start_tx
+            if dt > 0:
+                inst_fps = 1.0 / dt
+                fps_history.append(inst_fps)
+                current_fps = sum(fps_history) / len(fps_history)
+            
+            height, width = vis_frame.shape[:2]
+            cv2.putText(vis_frame, f"FPS: {current_fps:.1f}", (width - 200, 30), 
+                        cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 255, 0), 2)
             
             # Update MJPEG buffer
             ok, buf = cv2.imencode(".jpg", vis_frame)

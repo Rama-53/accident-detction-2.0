@@ -35,6 +35,7 @@ import cv2
 BUFFER_SECONDS = 5    # Seconds of history to keep
 POST_EVENT_SECONDS = 5 # Seconds of video to capture AFTER trigger
 FPS = 30              # Assumed FPS (should ideally match source)
+MAX_SNAPSHOTS_PER_ALERT = 50  # Max snapshots per alert
 
 class CameraState:
     def __init__(self, history_len=10, cooldown_len=10):
@@ -353,17 +354,42 @@ def main(zmq_host: str, zmq_port: int, mongo_uri: str, db_name: str, out_dir: st
                 # Ensure we track the correct ID for video updates
                 state.current_alert_id = latest_alert["_id"] 
                 
-                try:
-                    accidents_col.update_one(
-                        {"_id": latest_alert["_id"]},
-                        {
-                            "$push": {"crops": {"$each": crops_meta}},
-                            "$set": {"last_updated": datetime.now(timezone.utc).replace(tzinfo=None)}
-                        }
-                    )
-                    if verbose: print(f"[subscriber] GROUPED into {latest_alert['_id']} (Sector: {sector_id}, Delay: {delay_minutes}m)")
-                except Exception as e:
-                    print(f"MongoDB update error: {e}")
+                # Check exist counts to enforce limit
+                existing_crops = latest_alert.get("crops", [])
+                current_count = len(existing_crops)
+                
+                if current_count < MAX_SNAPSHOTS_PER_ALERT:
+                     space_left = MAX_SNAPSHOTS_PER_ALERT - current_count
+                     if space_left > 0:
+                         crops_to_push = crops_meta[:space_left]
+                         try:
+                             accidents_col.update_one(
+                                 {"_id": latest_alert["_id"]},
+                                 {
+                                     "$push": {"crops": {"$each": crops_to_push}},
+                                     "$set": {"last_updated": datetime.now(timezone.utc).replace(tzinfo=None)}
+                                 }
+                             )
+                             if verbose: print(f"[subscriber] GROUPED into {latest_alert['_id']} (Added {len(crops_to_push)} crops)")
+                         except Exception as e:
+                             print(f"MongoDB update error: {e}")
+                     else:
+                        # Just update timestamp
+                        try:
+                             accidents_col.update_one(
+                                 {"_id": latest_alert["_id"]},
+                                 {"$set": {"last_updated": datetime.now(timezone.utc).replace(tzinfo=None)}}
+                             )
+                        except: pass
+                else:
+                    if verbose and frame_idx % 30 == 0:
+                         print(f"[subscriber] Grouping but snapshot limit reached ({current_count}). no new crops.")
+                    try:
+                         accidents_col.update_one(
+                             {"_id": latest_alert["_id"]},
+                             {"$set": {"last_updated": datetime.now(timezone.utc).replace(tzinfo=None)}}
+                         )
+                    except: pass
             else:
                 # New Alert
                 doc = build_mongo_doc(camera_id, frame_idx, event.get("ts_utc", time.time()), event, crops_meta)

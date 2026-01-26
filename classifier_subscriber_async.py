@@ -480,18 +480,45 @@ def main(zmq_host: str, zmq_port: int, mongo_uri: str, db_name: str, out_dir: st
             if should_group:
                 state.current_alert_id = latest_alert["_id"]
                 
-                try:
-                    accidents_col.update_one(
-                        {"_id": latest_alert["_id"]},
-                        {
-                            "$push": {"crops": {"$each": crops_meta}},
-                            "$set": {"last_updated": datetime.now(timezone.utc).replace(tzinfo=None)}
-                        }
-                    )
-                    if verbose:
-                        print(f"[subscriber] GROUPED into {latest_alert['_id']}")
-                except Exception as e:
-                    print(f"MongoDB update error: {e}")
+                # Check exist counts to enforce limit
+                existing_crops = latest_alert.get("crops", [])
+                current_count = len(existing_crops)
+                
+                if current_count < MAX_SNAPSHOTS_PER_ALERT:
+                    space_left = MAX_SNAPSHOTS_PER_ALERT - current_count
+                    if space_left > 0:
+                        crops_to_push = crops_meta[:space_left]
+                        
+                        try:
+                            accidents_col.update_one(
+                                {"_id": latest_alert["_id"]},
+                                {
+                                    "$push": {"crops": {"$each": crops_to_push}},
+                                    "$set": {"last_updated": datetime.now(timezone.utc).replace(tzinfo=None)}
+                                }
+                            )
+                            if verbose:
+                                print(f"[subscriber] GROUPED into {latest_alert['_id']} (Added {len(crops_to_push)} crops)")
+                        except Exception as e:
+                            print(f"MongoDB update error: {e}")
+                    else:
+                        # Just update timestamp
+                         try:
+                            accidents_col.update_one(
+                                {"_id": latest_alert["_id"]},
+                                {"$set": {"last_updated": datetime.now(timezone.utc).replace(tzinfo=None)}}
+                            )
+                         except: pass
+                else:
+                    # Limit reached, just update timestamp
+                    if verbose and frame_idx % 30 == 0:
+                        print(f"[subscriber] Grouping but snapshot limit reached ({current_count}). no new crops.")
+                    try:
+                        accidents_col.update_one(
+                            {"_id": latest_alert["_id"]},
+                            {"$set": {"last_updated": datetime.now(timezone.utc).replace(tzinfo=None)}}
+                        )
+                    except: pass
             else:
                 # New Alert - Skip if no crops (prevents phantom alerts)
                 if not crops_meta:
