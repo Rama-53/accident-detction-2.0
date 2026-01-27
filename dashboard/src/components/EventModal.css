@@ -682,7 +682,7 @@
 .technical-header {
     background: linear-gradient(180deg, rgba(0, 255, 136, 0.03) 0%, transparent 100%);
     border-bottom: 1px solid rgba(0, 255, 136, 0.1) !important;
-    padding: 24px 28px !important;
+    padding: 24px 80px 24px 28px !important;
 }
 
 .header-status-row {
