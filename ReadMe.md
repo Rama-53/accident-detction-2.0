@@ -5,10 +5,13 @@ A production-grade real-time accident detection system featuring a hybrid **YOLO
 ## Key Features
 
 ### 🧠 Advanced Detection & Verification
-- **Hybrid AI**: Combines **YOLOv11** (Object Detection) with a custom **Keras/TensorFlow CNN** (Scene Classification) to verify accidents and reduce false positives.
+- **Async Hybrid AI**: Two-stage processing architecture:
+  - **Fast Path (24ms, 42 FPS)**: Primary Custom CNN (16-32-16 Filter Architecture) for 100% Recall screening.
+  - **Accurate Path (161ms, async)**: Dual-model hybrid verification (Primary + ResNet50 w/ Custom Head) for precision filtering.
 - **Physics Engine**: Calculates **deceleration**, **angle changes**, and **relative speed** to detect non-collision accidents (e.g., sudden stops, spin-outs).
+- **Smart Verification**: Background thread verifies alerts with 89.80% accuracy without blocking real-time detection.
 - **Video Recording**: Automatically captures and saves video clips of accidents, including **pre-crash buffer** (5s before) and **post-crash footage** (5s after), ensuring the entire context is preserved.
-- **Smart Filtering**: Uses a temporal voting system and "cooldown" logic to prevent alert spamming.
+- **Smart Filtering**: Uses a temporal voting system (≥7/10 frames) and cooldown logic to prevent alert spamming.
 
 ### 🖥️ Modern Command Center
 - **Live Dashboard**: A high-performance **React + Vite** frontend (Glassmorphism design) with low-latency MJPEG streaming.
@@ -28,11 +31,13 @@ A production-grade real-time accident detection system featuring a hybrid **YOLO
     - The "Eyes". Reads video, tracks vehicles (Norfair), runs Physics checks, and serves the live visual stream.
     - Publishes candidate events via ZeroMQ.
     
-2.  **Subscriber (`classifier_subscriber.py`)**:
-    - The "Brain". Listens for events, buffers video frames.
-    - Verifies crashes using the **AccidentClassifier** (CNN).
+2.  **Subscriber (`classifier_subscriber_async.py`)**:
+    - The "Brain". Dual-threaded async processing:
+      - **Main Thread**: Fast primary CNN classification (24ms) for temporal voting and immediate alerts
+      - **Background Thread**: Hybrid verification (Primary + ResNet50) for priority mapping
     - Triggers **Video Recording** (dumps buffer to MP4).
-    - Saves evidence to MongoDB and notifies responders.
+    - Saves evidence to MongoDB with verification status and priority.
+    - Notifies emergency responders with sector-based targeting.
 
 3.  **Backend API (`services/api_server.py`)**:
     - FastAPI server managing the system configuration, camera metadata, and accident history.
@@ -82,7 +87,7 @@ python detector_publisher.py --video cctv_eg.mp4
 
 ### 4. Subscriber (Processing Logic)
 ```bash
-python classifier_subscriber.py
+python classifier_subscriber_async.py
 ```
 
 ## System Requirements

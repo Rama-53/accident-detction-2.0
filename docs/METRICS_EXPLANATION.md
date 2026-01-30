@@ -143,6 +143,7 @@ From this matrix:
 ## Model Comparison
 
 ### Primary CNN (accidents.keras)
+**Architecture:** Custom 3-Stage CNN (16-32-16 Filters)
 ```python
 # From evaluate_hybrid.py (line 138)
 Accuracy: 46.94%
@@ -161,6 +162,7 @@ True Non-Accident   |        52          |         0
 - 100% recall but 100% false positive rate
 
 ### Secondary ResNet50
+**Architecture:** ResNet50 w/ Custom Classification Head (512-256-2 units)
 ```python
 # From evaluate_hybrid.py (line 139)
 Accuracy: 58.16%

@@ -55,7 +55,7 @@ flowchart TD
         direction TB
         Buffer["📼 Ring Buffer<br>(5s Pre-Crash)"]
         Crop["✂️ Process: Crop ROI"]
-        CNN["🧠 Model: Keras CNN<br>(Binary Classify)"]
+        CNN["🧠 Model: Custom CNN<br>(16-32-16 Filters)"]
         Verify{"✅ Verified?"}
         Discard["🗑️ Discard False Pos"]
         
