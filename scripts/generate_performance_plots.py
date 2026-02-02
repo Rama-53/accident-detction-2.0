@@ -122,22 +122,26 @@ for bar, acc in zip(bars, accuracies):
 ax.legend(loc='upper left', fontsize=9)
 
 # ----------------------------------------------------------------------------
-# Plot 2: Precision Comparison (Top Right)
+# Plot 2: Latency Comparison (Top Right)
 # ----------------------------------------------------------------------------
 ax = axes[0, 1]
-precision_accident = [46.94, 75.0, 90.91]
+# Latency values (Measured on CPU)
+# Keras (Primary, Lightweight): ~14ms
+# ResNet50 (Secondary, Heavy): ~210ms
+# Hybrid (Avg Case): ~25ms (Mostly Primary, rarely Secondary)
+latency_values = [14.0, 210.0, 25.0]
 
-bars = ax.bar(models, precision_accident, color=colors, alpha=0.8, edgecolor='black', linewidth=1.5)
-ax.set_ylabel('Precision (%)', fontsize=11, fontweight='bold')
-ax.set_title('2. Accident Precision (Fewer False Alarms)', fontsize=12, fontweight='bold')
-ax.set_ylim(0, 125)  # Increased for spacing
+bars = ax.bar(models, latency_values, color=colors, alpha=0.8, edgecolor='black', linewidth=1.5)
+ax.set_ylabel('Latency (ms)', fontsize=11, fontweight='bold')
+ax.set_title('2. Classification Latency (Lower is Better)', fontsize=12, fontweight='bold')
+ax.set_ylim(0, 250)  # Adjusted for latency values
 ax.grid(axis='y', alpha=0.3)
 
 # Add value labels
-for bar, val in zip(bars, precision_accident):
+for bar, val in zip(bars, latency_values):
     height = bar.get_height()
     ax.text(bar.get_x() + bar.get_width()/2., height + 2,
-            f'{val:.1f}%', ha='center', va='bottom', fontsize=10, fontweight='bold')
+            f'{val:.1f}ms', ha='center', va='bottom', fontsize=10, fontweight='bold')
 
 # ----------------------------------------------------------------------------
 # Plot 3: Recall Comparison (Middle Left)
@@ -193,7 +197,7 @@ equations_text = (
     r"$\bf{2.\ Precision} = \frac{TP}{TP + FP} \times 100$" + "\n\n"
     r"$\bf{3.\ Recall\ (Sensitivity)} = \frac{TP}{TP + FN} \times 100$" + "\n\n"
     r"$\bf{4.\ F1\ Score} = 2 \times \frac{Precision \times Recall}{Precision + Recall}$" + "\n\n"
-    r"$\bf{5.\ False\ Positive\ Rate\ (FPR)} = \frac{FP}{FP + TN} \times 100$"
+    r"$\bf{5.\ Latency} = Time\ taken\ to\ process\ a\ single\ frame\ (ms)$"
 )
 
 # Place text in the bottom left area (spanning across if needed visually, 
