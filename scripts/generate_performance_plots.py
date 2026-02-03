@@ -122,26 +122,22 @@ for bar, acc in zip(bars, accuracies):
 ax.legend(loc='upper left', fontsize=9)
 
 # ----------------------------------------------------------------------------
-# Plot 2: Latency Comparison (Top Right)
+# Plot 2: F1 Score Comparison (Top Right)
 # ----------------------------------------------------------------------------
 ax = axes[0, 1]
-# Latency values (Measured on CPU)
-# Keras (Primary, Lightweight): ~14ms
-# ResNet50 (Secondary, Heavy): ~210ms
-# Hybrid (Avg Case): ~25ms (Mostly Primary, rarely Secondary)
-latency_values = [14.0, 210.0, 25.0]
+f1_scores = [63.64, 51.72, 88.89]
 
-bars = ax.bar(models, latency_values, color=colors, alpha=0.8, edgecolor='black', linewidth=1.5)
-ax.set_ylabel('Latency (ms)', fontsize=11, fontweight='bold')
-ax.set_title('2. Classification Latency (Lower is Better)', fontsize=12, fontweight='bold')
-ax.set_ylim(0, 250)  # Adjusted for latency values
+bars = ax.bar(models, f1_scores, color=colors, alpha=0.8, edgecolor='black', linewidth=1.5)
+ax.set_ylabel('F1 Score (%)', fontsize=11, fontweight='bold')
+ax.set_title('2. F1 Score (Balance of Prec & Rec)', fontsize=12, fontweight='bold')
+ax.set_ylim(0, 125)  # Increased for spacing
 ax.grid(axis='y', alpha=0.3)
 
 # Add value labels
-for bar, val in zip(bars, latency_values):
+for bar, f1 in zip(bars, f1_scores):
     height = bar.get_height()
     ax.text(bar.get_x() + bar.get_width()/2., height + 2,
-            f'{val:.1f}ms', ha='center', va='bottom', fontsize=10, fontweight='bold')
+            f'{f1:.1f}%', ha='center', va='bottom', fontsize=10, fontweight='bold')
 
 # ----------------------------------------------------------------------------
 # Plot 3: Recall Comparison (Middle Left)
@@ -162,22 +158,26 @@ for bar, val in zip(bars, recall_accident):
             f'{val:.1f}%', ha='center', va='bottom', fontsize=10, fontweight='bold')
 
 # ----------------------------------------------------------------------------
-# Plot 4: F1 Score Comparison (Middle Right)
+# Plot 4: System Latency Comparison (Middle Right)
 # ----------------------------------------------------------------------------
 ax = axes[1, 1]
-f1_scores = [63.64, 51.72, 88.89]
+# Latency values (Measured on GPU)
+# Keras (Primary): ~11.6ms (Lightweight detection)
+# ResNet50 (Secondary): ~123.5ms (Heavy verification)
+# Hybrid (Async): ~20.0ms (Main thread only waits for Primary)
+latency_values = [11.6, 123.5, 20.0]
 
-bars = ax.bar(models, f1_scores, color=colors, alpha=0.8, edgecolor='black', linewidth=1.5)
-ax.set_ylabel('F1 Score (%)', fontsize=11, fontweight='bold')
-ax.set_title('4. F1 Score (Balance of Prec & Rec)', fontsize=12, fontweight='bold')
-ax.set_ylim(0, 125)  # Increased for spacing
+bars = ax.bar(models, latency_values, color=colors, alpha=0.8, edgecolor='black', linewidth=1.5)
+ax.set_ylabel('Latency (ms)', fontsize=11, fontweight='bold')
+ax.set_title('4. System Latency (Lower is Better)', fontsize=12, fontweight='bold')
+ax.set_ylim(0, 160)  # Adjusted for GPU latency values
 ax.grid(axis='y', alpha=0.3)
 
 # Add value labels
-for bar, f1 in zip(bars, f1_scores):
+for bar, val in zip(bars, latency_values):
     height = bar.get_height()
     ax.text(bar.get_x() + bar.get_width()/2., height + 2,
-            f'{f1:.1f}%', ha='center', va='bottom', fontsize=10, fontweight='bold')
+            f'{val:.1f}ms', ha='center', va='bottom', fontsize=10, fontweight='bold')
 
 
 # ----------------------------------------------------------------------------
