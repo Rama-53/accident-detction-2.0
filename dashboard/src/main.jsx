@@ -4,4 +4,10 @@ import App from "./App.jsx";
 import "./index.css";
 import "./App.css";
 
-createRoot(document.getElementById("root")).render(<App />);
+import { ErrorBoundary } from "./components/ErrorBoundary";
+
+createRoot(document.getElementById("root")).render(
+    <ErrorBoundary>
+        <App />
+    </ErrorBoundary>
+);

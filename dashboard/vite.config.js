@@ -10,4 +10,8 @@ export default defineConfig({
       },
     }),
   ],
+  server: {
+    host: true, // Listen on all addresses, including LAN and Docker
+    port: 5173,
+  },
 })
