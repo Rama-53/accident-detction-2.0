@@ -100,6 +100,21 @@ services:
       - ./dashboard:/app
       - /app/node_modules
 
+  mobile_dashboard:
+    build:
+      context: ./MobileDashboard
+      dockerfile: Dockerfile
+    container_name: accident_mobile_dashboard
+    ports:
+      - "3000:3000"
+    environment:
+      - VITE_API_URL=http://localhost:8000
+    depends_on:
+      - api
+    volumes:
+      - ./MobileDashboard:/app
+      - /app/node_modules
+
   prometheus:
     image: prom/prometheus
     container_name: accident_prometheus
