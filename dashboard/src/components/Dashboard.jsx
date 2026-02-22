@@ -5,7 +5,7 @@ import { CameraMap } from './CameraMap';
 import { AlertsList } from './AlertsList';
 import { StatsWidget } from './StatsWidget';
 import { IncidentTimeline } from './IncidentTimeline';
-import { SeverityChart } from './SeverityChart';
+import { PerformanceChart } from './PerformanceChart';
 import './Dashboard.css';
 
 const containerVariants = {
@@ -55,8 +55,8 @@ export function Dashboard() {
                     <IncidentTimeline />
                 </motion.div>
 
-                <motion.div className="severity-section" variants={itemVariants}>
-                    <SeverityChart />
+                <motion.div className="performance-section" variants={itemVariants}>
+                    <PerformanceChart />
                 </motion.div>
             </div>
         </motion.div>

@@ -509,9 +509,17 @@ def main(
             
             if frame_idx % 30 == 0:
                 print(f"[publisher] Processed frame {frame_idx}, cam_id={current_camera_id}")
+                # Send real-time metrics to the API
+                try:
+                    import requests
+                    metrics_data = {
+                        "fps": current_fps,
+                        "latency_ms": (time.time() - loop_start_tx) * 1000
+                    }
+                    requests.post("http://api:8000/system/metrics", json=metrics_data, timeout=1.0)
+                except Exception as e:
+                    pass
 
-            # attach metadata
-            # attach metadata (thread-safe read)
             # attach metadata (thread-safe read)
             with config_lock:
                 if current_identity_meta:

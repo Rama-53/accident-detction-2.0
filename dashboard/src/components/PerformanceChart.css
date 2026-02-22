@@ -1,0 +1,65 @@
+.performance-panel {
+    display: flex;
+    flex-direction: column;
+    padding: 16px;
+    height: 100%;
+}
+
+.metrics-summary {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 15px;
+    padding: 0 10px;
+    gap: 10px;
+}
+
+.metric-box {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    padding: 8px 12px;
+    flex: 1;
+}
+
+.metric-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.5);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 4px;
+}
+
+.metric-val {
+    font-size: 16px;
+    font-family: 'JetBrains Mono', 'Courier New', Courier, monospace;
+    font-weight: 600;
+}
+
+.pulse-icon {
+    animation: pulse 2s infinite;
+    color: #10b981;
+}
+
+@keyframes pulse {
+    0% {
+        opacity: 0.5;
+        transform: scale(0.95);
+    }
+
+    50% {
+        opacity: 1;
+        transform: scale(1.05);
+    }
+
+    100% {
+        opacity: 0.5;
+        transform: scale(0.95);
+    }
+}

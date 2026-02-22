@@ -336,7 +336,12 @@ import time as _time
 import psutil
 API_START_TIME = _time.time()
 
-@app.get("/system/stats")
+# Store real-time detector metrics
+DETECTOR_METRICS = {
+    "fps": 0.0,
+    "latency_ms": 0.0,
+    "last_updated": 0.0
+}
 def get_system_stats():
     """
     Return real-time system statistics for the dashboard header.
@@ -384,9 +389,15 @@ def get_system_stats():
         last_event = db.accidents.find_one(sort=[("inserted_at", -1)])
         if last_event and last_event.get("inserted_at"):
             last_event_time = last_event["inserted_at"].timestamp() if hasattr(last_event["inserted_at"], 'timestamp') else last_event["inserted_at"]
-    except:
-        pass
+    # Include real-time detector stats
+    detector_fps = 0.0
+    detector_latency = 0.0
     
+    # Only return stats if they are fresh (within the last 10 seconds)
+    if _time.time() - DETECTOR_METRICS["last_updated"] < 10.0:
+        detector_fps = DETECTOR_METRICS["fps"]
+        detector_latency = DETECTOR_METRICS["latency_ms"]
+
     return {
         "cpu_percent": round(cpu_percent, 1),
         "memory_percent": round(memory_percent, 1),
@@ -396,9 +407,27 @@ def get_system_stats():
         "detector_online": detector_online,
         "active_detections": active_detections,
         "last_event_time": last_event_time,
+        "detector_fps": round(detector_fps, 1),
+        "detector_latency": round(detector_latency, 1),
         "timestamp": _time.time()
     }
 
+class DetectorMetrics(BaseModel):
+    fps: float
+    latency_ms: float
+
+@app.post("/system/metrics")
+def update_detector_metrics(metrics: dict):
+    """
+    Accept real-time FPS and latency from the detector_publisher.
+    """
+    if "fps" in metrics:
+        DETECTOR_METRICS["fps"] = float(metrics["fps"])
+    if "latency_ms" in metrics:
+        DETECTOR_METRICS["latency_ms"] = float(metrics["latency_ms"])
+    DETECTOR_METRICS["last_updated"] = _time.time()
+    return {"status": "ok"}
+    
 @app.post("/system/config")
 def update_system_config(config: SystemConfig):
     if config.multi_detection_enabled is not None:

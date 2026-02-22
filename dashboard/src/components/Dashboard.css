@@ -60,7 +60,7 @@
     min-height: 400px;
 }
 
-.severity-section {
+.performance-section {
     display: flex;
     flex-direction: column;
     min-height: 400px;
@@ -71,7 +71,7 @@
 .alerts-section>*,
 .map-section>*,
 .timeline-section>*,
-.severity-section>* {
+.performance-section>* {
     height: 100%;
 }
 
@@ -102,7 +102,7 @@
     }
 
     .timeline-section,
-    .severity-section {
+    .performance-section {
         min-height: 400px;
     }
 }

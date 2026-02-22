@@ -119,21 +119,15 @@ export default function Cameras() {
                 )}
                 onClick={() => setFullscreenCamera(cam)}
               >
-                {/* Camera feed or placeholder */}
-                {cam.detection_enabled ? (
-                  <img
-                    className="w-full h-full object-cover opacity-80 transition-opacity group-hover:opacity-100"
-                    alt={cam.camera_name || cam.label}
-                    src={getVideoFeedUrl(cam.id)}
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).style.display = 'none';
-                    }}
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center bg-slate-900">
-                    <span className="material-icons text-slate-700 text-3xl">videocam_off</span>
-                  </div>
-                )}
+                {/* Camera feed - always show stream */}
+                <img
+                  className="w-full h-full object-cover opacity-80 transition-opacity group-hover:opacity-100"
+                  alt={cam.camera_name || cam.label}
+                  src={getVideoFeedUrl(cam.id)}
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).style.display = 'none';
+                  }}
+                />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/40"></div>
 
                 {/* Status Overlays */}
@@ -228,26 +222,17 @@ export default function Cameras() {
             </button>
           </div>
           <div className="flex-grow relative flex items-center justify-center">
-            {fullscreenCamera.detection_enabled ? (
-              <img
-                className="max-w-full max-h-full object-contain"
-                alt={fullscreenCamera.camera_name || fullscreenCamera.label}
-                src={getVideoFeedUrl(fullscreenCamera.id)}
-              />
-            ) : (
-              <div className="flex flex-col items-center gap-3 text-slate-500">
-                <span className="material-icons text-5xl">videocam_off</span>
-                <p className="text-sm">Camera is offline</p>
-              </div>
-            )}
+            <img
+              className="max-w-full max-h-full object-contain"
+              alt={fullscreenCamera.camera_name || fullscreenCamera.label}
+              src={getVideoFeedUrl(fullscreenCamera.id)}
+            />
             <div className="absolute top-4 left-4 bg-black/60 backdrop-blur-md px-4 py-2 rounded-lg">
               <h2 className="text-white font-bold">{fullscreenCamera.camera_name || fullscreenCamera.label}</h2>
               <div className="flex items-center gap-2 mt-1">
-                {fullscreenCamera.detection_enabled && (
-                  <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
-                )}
+                <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
                 <span className="text-white/80 text-xs">
-                  {fullscreenCamera.detection_enabled ? 'LIVE' : 'OFFLINE'} • {fullscreenCamera.location || 'Unknown'}
+                  LIVE • {fullscreenCamera.location || 'Unknown'}
                 </span>
               </div>
             </div>
