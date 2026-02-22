@@ -50,92 +50,97 @@ export function CameraMap() {
         <div className="glass-panel camera-map-panel">
             <div className="panel-header">
                 <div className="panel-title">
-                    <MapPin size={18} />
+                    <MapPin size={18} className="map-icon-glow" />
                     <span>Camera Location</span>
                 </div>
                 <button
-                    className="btn-save"
+                    className="btn-save premium-btn"
                     onClick={handleSave}
                     disabled={isSaving}
-                    style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '6px',
-                        padding: '6px 12px',
-                        fontSize: '0.85rem',
-                        background: 'var(--primary-gradient)',
-                        border: 'none',
-                        borderRadius: '6px',
-                        color: 'white',
-                        cursor: isSaving ? 'wait' : 'pointer',
-                        opacity: isSaving ? 0.8 : 1
-                    }}
                 >
                     {isSaving ? <Loader size={14} className="spin" /> : <Save size={14} />}
                     {isSaving ? 'Saving...' : 'Save'}
                 </button>
             </div>
 
-            <div className="camera-config-inputs">
-                <div style={{ marginBottom: '15px' }}>
-                    <PremiumInput
-                        placeholder="Camera Name"
-                        value={selectedSourceInfo.name}
-                        onChange={e => updateCameraMetaValue(selectedVideoSource, 'name', e.target.value)}
-                    // Removed onBlur autosave
-                    />
-                </div>
-                <div className="location-input-wrapper">
-                    <PremiumInput
-                        placeholder="Location (City/Place)"
-                        value={selectedSourceInfo.location}
-                        onChange={e => handleLocationChange(selectedVideoSource, e.target.value)}
-                        onBlur={() => {
-                            setTimeout(() => setShowSuggestions(false), 200);
-                            // Removed autosave
-                        }}
-                    />
-                    {showSuggestions && locationSuggestions.length > 0 && (
-                        <ul className="suggestions-dropdown">
-                            {locationSuggestions.map((s) => (
-                                <li key={s.place_id} onClick={() => selectSuggestion(selectedVideoSource, s)}>
-                                    {s.display_name}
-                                </li>
-                            ))}
-                        </ul>
-                    )}
-                </div>
-                <div style={{ marginTop: '15px' }}>
-                    <PremiumInput
-                        type="text"
-                        placeholder="Sector ID (e.g. North)"
-                        value={selectedSourceInfo.sector_id || ""}
-                        onChange={e => updateCameraMetaValue(selectedVideoSource, 'sector_id', e.target.value)}
-                    // Removed onBlur autosave
-                    />
-                </div>
-            </div>
+            <div className="camera-map-content">
+                <div className="camera-config-sidebar glass-panel-inner">
+                    <div className="input-group">
+                        <label>Camera Name</label>
+                        <PremiumInput
+                            placeholder="e.g. Main Intersection"
+                            value={selectedSourceInfo.name || ""}
+                            onChange={e => updateCameraMetaValue(selectedVideoSource, 'name', e.target.value)}
+                        />
+                    </div>
 
-            <div className="map-container">
-                <MapContainer
-                    center={[selectedSourceInfo.lat || 20.5937, selectedSourceInfo.lng || 78.9629]}
-                    zoom={selectedSourceInfo.lat ? 13 : 4}
-                    style={{ height: '100%', width: '100%' }}
-                >
-                    <TileLayer
-                        attribution='&copy; OpenStreetMap'
-                        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                    />
-                    <LocationMarker
-                        lat={selectedSourceInfo.lat}
-                        lng={selectedSourceInfo.lng}
-                        onLocationSelect={(lat, lng) => {
-                            updateCameraMetaValue(selectedVideoSource, 'lat', lat);
-                            updateCameraMetaValue(selectedVideoSource, 'lng', lng);
-                            // Removed timeout autosave
-                        }}
-                    />
-                </MapContainer>
+                    <div className="input-group location-input-wrapper">
+                        <label>Location Search</label>
+                        <PremiumInput
+                            placeholder="City, Street, or Landmark"
+                            value={selectedSourceInfo.location || ""}
+                            onChange={e => handleLocationChange(selectedVideoSource, e.target.value)}
+                            onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+                        />
+                        {showSuggestions && locationSuggestions.length > 0 && (
+                            <ul className="suggestions-dropdown glass-dropdown">
+                                {locationSuggestions.map((s) => (
+                                    <li key={s.place_id} onClick={() => selectSuggestion(selectedVideoSource, s)}>
+                                        <MapPin size={12} className="suggestion-icon" />
+                                        <span>{s.display_name}</span>
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
+                    </div>
+
+                    <div className="input-group">
+                        <label>Sector Assignment</label>
+                        <PremiumInput
+                            type="text"
+                            placeholder="e.g. SEC-NORTH-01"
+                            value={selectedSourceInfo.sector_id || ""}
+                            onChange={e => updateCameraMetaValue(selectedVideoSource, 'sector_id', e.target.value)}
+                        />
+                    </div>
+
+                    <div className="coordinates-display">
+                        <div className="coord-item">
+                            <span className="coord-label">LAT</span>
+                            <span className="coord-val">{selectedSourceInfo.lat ? selectedSourceInfo.lat.toFixed(4) : '---'}</span>
+                        </div>
+                        <div className="coord-item">
+                            <span className="coord-label">LNG</span>
+                            <span className="coord-val">{selectedSourceInfo.lng ? selectedSourceInfo.lng.toFixed(4) : '---'}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="map-container-wrapper">
+                    <div className="map-container ui-map-frame">
+                        <MapContainer
+                            center={[selectedSourceInfo.lat || 20.5937, selectedSourceInfo.lng || 78.9629]}
+                            zoom={selectedSourceInfo.lat ? 13 : 4}
+                            scrollWheelZoom={true}
+                            style={{ height: '100%', width: '100%' }}
+                        >
+                            {/* Using a darker map tile layer for the dark theme */}
+                            <TileLayer
+                                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>'
+                                url="https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png"
+                            />
+                            <LocationMarker
+                                lat={selectedSourceInfo.lat}
+                                lng={selectedSourceInfo.lng}
+                                onLocationSelect={(lat, lng) => {
+                                    updateCameraMetaValue(selectedVideoSource, 'lat', lat);
+                                    updateCameraMetaValue(selectedVideoSource, 'lng', lng);
+                                }}
+                            />
+                        </MapContainer>
+                    </div>
+                    <div className="map-overlay-hint">Click on the map to drop a pin</div>
+                </div>
             </div>
         </div>
     );
