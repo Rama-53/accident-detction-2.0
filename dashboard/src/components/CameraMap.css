@@ -70,7 +70,9 @@
 
 /* Sidebar for Inputs */
 .camera-config-sidebar {
-    width: 280px;
+    flex: 1 1 auto;
+    min-width: 180px;
+    max-width: 280px;
     display: flex;
     flex-direction: column;
     gap: 12px;
@@ -78,7 +80,6 @@
     background: rgba(10, 15, 25, 0.4);
     border-radius: 8px;
     border: 1px solid rgba(255, 255, 255, 0.05);
-    flex-shrink: 0;
 }
 
 .input-group label {
