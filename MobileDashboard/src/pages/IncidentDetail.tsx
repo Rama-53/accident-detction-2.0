@@ -1,27 +1,38 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import clsx from 'clsx';
 import {
   fetchEvents,
+  fetchSystemConfig,
   getSnapshotUrl,
+  getMapsNavigationUrl,
+  getCallUrl,
   formatTime,
   formatDate,
   type Event,
 } from '../services/api';
+import { useIncidentStatus } from '../hooks/useIncidentStatus';
 
 export default function IncidentDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [event, setEvent] = useState<Event | null>(null);
+  const [adminPhone, setAdminPhone] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const { status: responseStatus, setStatus: setResponseStatus } = useIncidentStatus(id);
 
   useEffect(() => {
     let active = true;
     async function load() {
       try {
-        const events = await fetchEvents(undefined, 100);
+        const [events, config] = await Promise.all([
+          fetchEvents(undefined, 100),
+          fetchSystemConfig().catch(() => null),
+        ]);
         if (!active) return;
         const found = events.find(e => e.id === id);
         setEvent(found || null);
+        if (config?.admin_phone) setAdminPhone(config.admin_phone);
       } catch (err) {
         console.error('Failed to fetch event:', err);
       } finally {
@@ -93,8 +104,20 @@ export default function IncidentDetail() {
               <span className="material-icons text-slate-600 text-5xl">videocam_off</span>
             </div>
           )}
-          <div className="absolute top-4 right-4 bg-red-500 text-white px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider shadow-md">
-            {event.severity} Severity
+          <div className="absolute top-4 right-4 flex flex-col items-end gap-1.5">
+            {responseStatus && (
+              <span className={clsx(
+                "px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider shadow-md",
+                responseStatus === 'en_route' && "bg-amber-500 text-white",
+                responseStatus === 'arrived' && "bg-emerald-500 text-white",
+                responseStatus === 'completed' && "bg-slate-600 text-white"
+              )}>
+                {responseStatus === 'en_route' ? 'En Route' : responseStatus === 'arrived' ? 'On Scene' : 'Completed'}
+              </span>
+            )}
+            <span className="bg-red-500 text-white px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider shadow-md">
+              {event.severity} Severity
+            </span>
           </div>
         </div>
 
@@ -157,6 +180,56 @@ export default function IncidentDetail() {
               </p>
             </div>
           )}
+
+          {/* Responder Quick Actions */}
+          <div className="pt-4 mt-4 border-t border-slate-100 dark:border-slate-800 space-y-3">
+            <p className="text-xs text-slate-500 uppercase tracking-wider mb-2">Responder Actions</p>
+            <div className="flex flex-wrap gap-2">
+              {event.location_lat && event.location_lng && (
+                <a
+                  href={getMapsNavigationUrl(event.location_lat, event.location_lng)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 px-4 py-2.5 bg-primary text-white rounded-xl font-semibold text-sm shadow-lg shadow-primary/30 active:scale-[0.98] transition-transform"
+                >
+                  <span className="material-icons text-lg">directions</span>
+                  Get Directions
+                </a>
+              )}
+              {adminPhone && (
+                <a
+                  href={getCallUrl(adminPhone)}
+                  className="flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 rounded-xl font-semibold text-sm active:scale-[0.98] transition-transform"
+                >
+                  <span className="material-icons text-lg">phone</span>
+                  Call Dispatch
+                </a>
+              )}
+            </div>
+            <div className="flex flex-wrap gap-2 pt-1">
+              {(['en_route', 'arrived', 'completed'] as const).map((s) => (
+                <button
+                  key={s}
+                  onClick={() => setResponseStatus(responseStatus === s ? null : s)}
+                  className={clsx(
+                    "flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all",
+                    responseStatus === s
+                      ? s === 'en_route'
+                        ? "bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/50"
+                        : s === 'arrived'
+                          ? "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/50"
+                          : "bg-slate-500/20 text-slate-600 dark:text-slate-300 border border-slate-500/50"
+                      : "bg-slate-100 dark:bg-slate-800 text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-700"
+                  )}
+                >
+                  <span className="material-icons text-sm">
+                    {s === 'en_route' ? 'local_shipping' : s === 'arrived' ? 'place' : 'check_circle'}
+                  </span>
+                  {s === 'en_route' ? 'En Route' : s === 'arrived' ? 'Arrived' : 'Completed'}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
 
         {/* Detection Info */}

@@ -208,3 +208,14 @@ export function formatDate(ts: number | null): string {
     const d = new Date(ts * 1000);
     return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
+
+/** Build maps URL for navigation - works on iOS (Apple Maps) and Android (Google Maps) */
+export function getMapsNavigationUrl(lat: number, lng: number): string {
+    return `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
+}
+
+/** Build tel: URL for calling */
+export function getCallUrl(phone: string): string {
+    const cleaned = phone.replace(/\D/g, '');
+    return `tel:${cleaned ? `+${cleaned}` : phone}`;
+}

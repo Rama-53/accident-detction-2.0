@@ -342,6 +342,8 @@ DETECTOR_METRICS = {
     "latency_ms": 0.0,
     "last_updated": 0.0
 }
+
+@app.get("/system/stats")
 def get_system_stats():
     """
     Return real-time system statistics for the dashboard header.
@@ -389,6 +391,9 @@ def get_system_stats():
         last_event = db.accidents.find_one(sort=[("inserted_at", -1)])
         if last_event and last_event.get("inserted_at"):
             last_event_time = last_event["inserted_at"].timestamp() if hasattr(last_event["inserted_at"], 'timestamp') else last_event["inserted_at"]
+    except Exception:
+        pass
+        
     # Include real-time detector stats
     detector_fps = 0.0
     detector_latency = 0.0

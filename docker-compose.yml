@@ -70,6 +70,7 @@ services:
       - DETECTOR_HEALTH_URL=http://ai_core:5001/stream.mjpg
     volumes:
       - ./accident_crops:/app/accident_crops
+      - ./temp_uploads:/app/temp_uploads
       - /var/run/docker.sock:/var/run/docker.sock
     depends_on:
       - mongo
@@ -108,7 +109,7 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - VITE_API_URL=http://localhost:8000
+      - NODE_ENV=development
     depends_on:
       - api
     volumes:

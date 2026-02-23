@@ -7,14 +7,18 @@ import 'leaflet/dist/leaflet.css';
 import {
   fetchVideoSources,
   fetchEvents,
+  fetchResponders,
   fetchSystemStats,
   getVideoFeedUrl,
+  getMapsNavigationUrl,
   formatRelativeTime,
   type VideoSource,
   type Event,
   type SystemStats,
 } from '../services/api';
 import { usePullToRefresh } from '../hooks/usePullToRefresh';
+import { useResponder } from '../hooks/useResponder';
+import { getIncidentStatus } from '../hooks/useIncidentStatus';
 
 // Fix Leaflet default icon paths
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -44,19 +48,24 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const [cameras, setCameras] = useState<VideoSource[]>([]);
   const [events, setEvents] = useState<Event[]>([]);
+  const [responders, setResponders] = useState<Awaited<ReturnType<typeof fetchResponders>>>([]);
   const [stats, setStats] = useState<SystemStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [activeCamera, setActiveCamera] = useState<string | null>(null);
+  const [sectorFilter, setSectorFilter] = useState<'all' | 'my'>('all');
+  const { currentResponder, sectorId } = useResponder(responders);
 
   const loadData = useCallback(async () => {
     try {
-      const [cams, evts, sysStats] = await Promise.all([
+      const [cams, evts, resps, sysStats] = await Promise.all([
         fetchVideoSources(),
         fetchEvents(undefined, 10),
+        fetchResponders().catch(() => []),
         fetchSystemStats().catch(() => null),
       ]);
       setCameras(cams);
       setEvents(evts);
+      setResponders(resps);
       setStats(sysStats);
     } catch (err) {
       console.error('Dashboard load error:', err);
@@ -85,8 +94,11 @@ export default function Dashboard() {
   }, [loadData]);
 
   // Compute live stats
+  const displayEvents = sectorFilter === 'my' && sectorId
+    ? events.filter(e => (e.sector_id || '').toLowerCase() === (sectorId || '').toLowerCase())
+    : events;
   const activeCamCount = cameras.filter(c => c.detection_enabled).length;
-  const highCount = events.filter(e => e.severity === 'high').length;
+  const highCount = displayEvents.filter(e => e.severity === 'high').length;
 
   // Default map center (first camera with coords or fallback)
   const firstCamWithCoords = cameras.find(c => c.lat && c.lng);
@@ -129,16 +141,38 @@ export default function Dashboard() {
 
       {/* Header */}
       <header className="pt-6 mb-6 animate-fade-in-up">
-        <div className="flex items-center gap-3 mb-1">
-          <div className="w-2 h-2 rounded-full bg-success animate-pulse"></div>
-          <span className="text-xs font-semibold uppercase tracking-widest text-success">System Active</span>
+        <div className="flex items-center justify-between gap-3 mb-1">
+          <div className="flex items-center gap-3">
+            <div className="w-2 h-2 rounded-full bg-success animate-pulse"></div>
+            <span className="text-xs font-semibold uppercase tracking-widest text-success">System Active</span>
+          </div>
+          {currentResponder && (
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary/10 text-primary text-[10px] font-bold uppercase tracking-wider">
+              <span className="material-icons text-sm">{currentResponder.role === 'police' ? 'local_police' : currentResponder.role === 'ambulance' ? 'medical_services' : currentResponder.role === 'fire' ? 'local_fire_department' : 'person'}</span>
+              {currentResponder.name}
+            </div>
+          )}
         </div>
         <h1 className="text-3xl font-extrabold tracking-tight">
           Command<span className="text-primary">Center</span>
         </h1>
         <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-          {cameras.length} camera{cameras.length !== 1 ? 's' : ''} • {events.length} recent event{events.length !== 1 ? 's' : ''}
+          {cameras.length} camera{cameras.length !== 1 ? 's' : ''} • {displayEvents.length} recent event{displayEvents.length !== 1 ? 's' : ''}
         </p>
+        {sectorId && (
+          <button
+            onClick={() => setSectorFilter(s => s === 'my' ? 'all' : 'my')}
+            className={clsx(
+              "mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all",
+              sectorFilter === 'my'
+                ? "bg-primary text-white shadow-md"
+                : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
+            )}
+          >
+            <span className="material-icons text-sm">location_on</span>
+            {sectorFilter === 'my' ? 'My Sector Only' : 'All Sectors'}
+          </button>
+        )}
       </header>
 
       {/* Stats Grid */}
@@ -152,7 +186,7 @@ export default function Dashboard() {
           },
           {
             label: 'Alerts',
-            value: events.length,
+            value: displayEvents.length,
             icon: 'notifications_active',
             gradient: 'from-severity-medium to-orange-600',
           },
@@ -263,7 +297,7 @@ export default function Dashboard() {
               </Marker>
             ))}
             {/* Event markers */}
-            {events.filter(e => e.location_lat && e.location_lng).map(evt => (
+            {displayEvents.filter(e => e.location_lat && e.location_lng).map(evt => (
               <Marker
                 key={evt.id}
                 position={[evt.location_lat!, evt.location_lng!]}
@@ -294,22 +328,24 @@ export default function Dashboard() {
           </button>
         </div>
         <div className="space-y-3">
-          {events.length === 0 ? (
+          {displayEvents.length === 0 ? (
             <div className="text-center py-8 text-slate-500">
               <span className="material-icons text-3xl mb-2 opacity-40">check_circle</span>
               <p className="text-sm">No recent incidents</p>
             </div>
           ) : (
-            events.slice(0, 5).map((evt, i) => (
+            displayEvents.slice(0, 5).map((evt, i) => (
               <div
                 key={evt.id}
                 onClick={() => navigate(`/incidents/${evt.id}`)}
                 className={clsx(
+                  "group",
                   "flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all active:scale-[0.98] hover:shadow-md animate-slide-in-right",
                   "bg-white dark:bg-card-dark border-slate-100 dark:border-slate-800",
                   `stagger-${i + 1}`
                 )}
               >
+                <div className="flex items-center gap-3 flex-1 min-w-0">
                 <div className={clsx(
                   "w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0",
                   evt.severity === 'high' ? "bg-severity-high/10" : "bg-severity-medium/10"
@@ -322,17 +358,42 @@ export default function Dashboard() {
                   </span>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold capitalize truncate">{evt.type}</p>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className="text-sm font-semibold capitalize truncate">{evt.type}</p>
+                    {getIncidentStatus(evt.id) && (
+                      <span className={clsx(
+                        "text-[9px] font-bold px-1.5 py-0.5 rounded uppercase",
+                        getIncidentStatus(evt.id) === 'en_route' && "bg-amber-500/20 text-amber-600 dark:text-amber-400",
+                        getIncidentStatus(evt.id) === 'arrived' && "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400",
+                        getIncidentStatus(evt.id) === 'completed' && "bg-slate-500/20 text-slate-600 dark:text-slate-400"
+                      )}>
+                        {getIncidentStatus(evt.id) === 'en_route' ? 'En Route' : getIncidentStatus(evt.id) === 'arrived' ? 'On Scene' : 'Done'}
+                      </span>
+                    )}
+                  </div>
                   <p className="text-[11px] text-slate-500 truncate">
                     {evt.camera_name || evt.camera_id} • {evt.location || 'Unknown'}
                   </p>
                 </div>
-                <div className="text-right flex-shrink-0">
+                <div className="text-right flex-shrink-0 flex flex-col items-end gap-0.5">
                   <p className="text-[10px] text-primary font-semibold">{formatRelativeTime(evt.time)}</p>
+                  {evt.location_lat != null && evt.location_lng != null && (
+                    <a
+                      href={getMapsNavigationUrl(evt.location_lat, evt.location_lng)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      className="opacity-0 group-hover:opacity-100 group-active:opacity-100 w-8 h-8 flex items-center justify-center rounded-lg bg-primary/20 text-primary transition-opacity"
+                      title="Get directions"
+                    >
+                      <span className="material-icons text-sm">directions</span>
+                    </a>
+                  )}
                   <span className={clsx(
                     "inline-block mt-0.5 w-2 h-2 rounded-full",
                     evt.severity === 'high' ? "bg-severity-high" : "bg-severity-medium"
                   )}></span>
+                </div>
                 </div>
               </div>
             ))

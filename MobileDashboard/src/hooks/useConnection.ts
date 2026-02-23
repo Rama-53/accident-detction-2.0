@@ -6,6 +6,26 @@ import { BACKEND_URL } from '../config';
 
 export type ConnectionStatus = 'connected' | 'disconnected' | 'reconnecting';
 
+const HEALTH_ENDPOINTS = ['/health', '/status'];
+
+async function ping(baseUrl: string): Promise<boolean> {
+    for (const path of HEALTH_ENDPOINTS) {
+        try {
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 8000);
+            const res = await fetch(`${baseUrl}${path}`, {
+                signal: controller.signal,
+                mode: 'cors',
+            });
+            clearTimeout(timeout);
+            if (res.ok) return true;
+        } catch {
+            // try next endpoint
+        }
+    }
+    return false;
+}
+
 export function useConnection() {
     const [status, setStatus] = useState<ConnectionStatus>('connected');
     const [lastConnected, setLastConnected] = useState<number>(Date.now());
@@ -15,34 +35,23 @@ export function useConnection() {
         let active = true;
 
         async function checkConnection() {
-            try {
-                const controller = new AbortController();
-                const timeout = setTimeout(() => controller.abort(), 3000);
-                const res = await fetch(`${BACKEND_URL}/health`, { signal: controller.signal });
-                clearTimeout(timeout);
+            const ok = await ping(BACKEND_URL);
+            if (!active) return;
 
-                if (res.ok && active) {
-                    if (status !== 'connected') {
-                        setStatus('connected');
-                        retryCount.current = 0;
-                    }
-                    setLastConnected(Date.now());
-                }
-            } catch {
-                if (!active) return;
+            if (ok) {
+                setStatus('connected');
+                setLastConnected(Date.now());
+                retryCount.current = 0;
+            } else {
                 retryCount.current++;
-                if (retryCount.current <= 2) {
-                    setStatus('reconnecting');
-                } else {
-                    setStatus('disconnected');
-                }
+                setStatus(retryCount.current <= 5 ? 'reconnecting' : 'disconnected');
             }
         }
 
         checkConnection();
         const interval = setInterval(checkConnection, 5000);
         return () => { active = false; clearInterval(interval); };
-    }, [status]);
+    }, []);
 
     return { status, lastConnected };
 }

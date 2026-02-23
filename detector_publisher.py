@@ -278,6 +278,7 @@ def main(
             candidates.append(f"/app/{basename}")
             candidates.append(f"/app/videos/{basename}")
             candidates.append(f"/app/accident_crops/{basename}")
+            candidates.append(f"/app/temp_uploads/{basename}")
         
         for cand in candidates:
             p = Path(cand)

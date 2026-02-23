@@ -9,6 +9,7 @@ import {
   type Responder,
 } from '../services/api';
 import { BACKEND_URL } from '../config';
+import { useResponder } from '../hooks/useResponder';
 
 export default function Settings() {
   const [volume, setVolume] = useState(() => {
@@ -22,6 +23,7 @@ export default function Settings() {
   const [responders, setResponders] = useState<Responder[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [loading, setLoading] = useState(true);
+  const { currentResponder, setResponder, clearResponder } = useResponder(responders);
 
   // Fetch system config and responders on mount
   useEffect(() => {
@@ -137,6 +139,62 @@ export default function Settings() {
       </header>
 
       <main className="flex-grow px-4 pt-6 space-y-8">
+        {/* Section: Responder Profile - "I am" selector */}
+        <section>
+          <h2 className="px-2 mb-2 text-xs font-semibold text-primary uppercase tracking-widest">Responder Profile</h2>
+          <p className="px-2 mb-3 text-xs text-slate-500">Select your profile for sector filtering and quick actions</p>
+          <div className="bg-white dark:bg-primary/5 rounded-xl border border-slate-200 dark:border-primary/20 overflow-hidden">
+            <button
+              onClick={() => clearResponder()}
+              className={clsx(
+                "w-full flex items-center justify-between px-4 py-3 text-left transition-colors",
+                !currentResponder
+                  ? "bg-primary/10 border-l-4 border-primary"
+                  : "hover:bg-slate-50 dark:hover:bg-white/5"
+              )}
+            >
+              <div className="flex items-center gap-3">
+                <span className="material-icons-outlined text-slate-400">person_outline</span>
+                <div className="text-left">
+                  <p className="text-sm font-semibold">Guest / Monitor</p>
+                  <p className="text-[10px] text-slate-500">View all sectors</p>
+                </div>
+              </div>
+              {!currentResponder && <span className="material-icons text-primary">check_circle</span>}
+            </button>
+            {responders.map((resp) => {
+              const ri = roleIcon[resp.role] || { icon: 'person', color: 'slate' };
+              const isSelected = currentResponder?._id === resp._id;
+              return (
+                <button
+                  key={resp._id}
+                  onClick={() => resp._id && setResponder(String(resp._id))}
+                  className={clsx(
+                    "w-full flex items-center justify-between px-4 py-3 text-left transition-colors border-t border-slate-100 dark:border-primary/10",
+                    isSelected ? "bg-primary/10 border-l-4 border-primary" : "hover:bg-slate-50 dark:hover:bg-white/5"
+                  )}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <span className="material-icons-outlined text-primary text-lg">{ri.icon}</span>
+                    </div>
+                    <div className="text-left">
+                      <p className="text-sm font-semibold">{resp.name}</p>
+                      <p className="text-[10px] text-slate-500">{resp.role} • {resp.sector_id}</p>
+                    </div>
+                  </div>
+                  {isSelected && <span className="material-icons text-primary">check_circle</span>}
+                </button>
+              );
+            })}
+            {responders.length === 0 && (
+              <div className="px-4 py-3 text-slate-500 text-xs">
+                No responders configured. Import from desktop dashboard.
+              </div>
+            )}
+          </div>
+        </section>
+
         {/* Section: Detection Logic */}
         <section>
           <h2 className="px-2 mb-2 text-xs font-semibold text-primary uppercase tracking-widest">Detection Logic</h2>

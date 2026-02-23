@@ -3,28 +3,41 @@ import { useNavigate } from 'react-router-dom';
 import clsx from 'clsx';
 import {
   fetchEvents,
+  fetchResponders,
   getSnapshotUrl,
+  getMapsNavigationUrl,
   formatTime,
   formatRelativeTime,
   type Event,
 } from '../services/api';
+import { useResponder } from '../hooks/useResponder';
+import { getIncidentStatus } from '../hooks/useIncidentStatus';
 
 export default function Incidents() {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [events, setEvents] = useState<Event[]>([]);
+  const [responders, setResponders] = useState<Awaited<ReturnType<typeof fetchResponders>>>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [filterSeverity, setFilterSeverity] = useState<'all' | 'high' | 'medium'>('all');
+  const [filterSector, setFilterSector] = useState<'all' | 'my'>('all');
   const [limit, setLimit] = useState(10);
+  const { sectorId } = useResponder(responders);
 
-  // Fetch events
+  // Fetch events and responders
   useEffect(() => {
     let active = true;
     async function load() {
       try {
-        const data = await fetchEvents(undefined, limit);
-        if (active) setEvents(data);
+        const [data, resps] = await Promise.all([
+          fetchEvents(undefined, limit),
+          fetchResponders().catch(() => []),
+        ]);
+        if (active) {
+          setEvents(data);
+          setResponders(resps);
+        }
       } catch (err) {
         console.error('Failed to fetch events:', err);
       } finally {
@@ -33,7 +46,6 @@ export default function Incidents() {
     }
     load();
 
-    // Poll every 5 seconds
     const interval = setInterval(async () => {
       try {
         const data = await fetchEvents(undefined, limit);
@@ -44,7 +56,8 @@ export default function Incidents() {
     return () => { active = false; clearInterval(interval); };
   }, [limit]);
 
-  const filteredAlerts = events.filter(evt => {
+  const filteredAlerts = events
+    .filter(evt => {
     const matchesSearch =
       (evt.type || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
       (evt.location || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -53,7 +66,20 @@ export default function Incidents() {
 
     const matchesSeverity = filterSeverity === 'all' || evt.severity === filterSeverity;
 
-    return matchesSearch && matchesSeverity;
+    const matchesSector =
+      filterSector === 'all' ||
+      (filterSector === 'my' && sectorId && (evt.sector_id || '').toLowerCase() === (sectorId || '').toLowerCase());
+
+    return matchesSearch && matchesSeverity && matchesSector;
+  })
+  .sort((a, b) => {
+    const severityOrder = { high: 0, medium: 1, low: 2 };
+    const sa = severityOrder[a.severity as keyof typeof severityOrder] ?? 2;
+    const sb = severityOrder[b.severity as keyof typeof severityOrder] ?? 2;
+    if (sa !== sb) return sa - sb;
+    const ta = a.time ?? 0;
+    const tb = b.time ?? 0;
+    return tb - ta;
   });
 
   const handleLoadMore = () => {
@@ -133,6 +159,20 @@ export default function Incidents() {
           >
             Medium Severity
           </button>
+          {sectorId && (
+            <button
+              onClick={() => setFilterSector(filterSector === 'my' ? 'all' : 'my')}
+              className={clsx(
+                "flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-all",
+                filterSector === 'my'
+                  ? "bg-primary text-white shadow-md shadow-primary/20"
+                  : "bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300"
+              )}
+            >
+              <span className="material-icons text-xs">location_on</span>
+              My Sector ({sectorId})
+            </button>
+          )}
         </div>
       </div>
 
@@ -167,7 +207,17 @@ export default function Incidents() {
                   </div>
                 )}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
-                <div className="absolute top-3 right-3">
+                <div className="absolute top-3 right-3 flex flex-col items-end gap-1">
+                  {getIncidentStatus(evt.id) && (
+                    <span className={clsx(
+                      "text-white text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider shadow-md",
+                      getIncidentStatus(evt.id) === 'en_route' && "bg-amber-500",
+                      getIncidentStatus(evt.id) === 'arrived' && "bg-emerald-500",
+                      getIncidentStatus(evt.id) === 'completed' && "bg-slate-600"
+                    )}>
+                      {getIncidentStatus(evt.id) === 'en_route' ? 'En Route' : getIncidentStatus(evt.id) === 'arrived' ? 'On Scene' : 'Done'}
+                    </span>
+                  )}
                   <span className={clsx(
                     "text-white text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider shadow-lg",
                     evt.severity === 'high' ? "bg-severity-high" : evt.severity === 'medium' ? "bg-severity-medium" : "bg-primary"
@@ -197,15 +247,29 @@ export default function Incidents() {
                     <span className="material-icons text-xs">schedule</span>
                     <span className="text-xs font-medium">{formatTime(evt.time)} • {formatRelativeTime(evt.time)}</span>
                   </div>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      navigate(`/incidents/${evt.id}`);
-                    }}
-                    className="text-primary text-xs font-bold uppercase tracking-widest flex items-center gap-1 hover:underline"
-                  >
-                    Details <span className="material-icons text-sm">chevron_right</span>
-                  </button>
+                  <div className="flex items-center gap-1">
+                    {evt.location_lat != null && evt.location_lng != null && (
+                      <a
+                        href={getMapsNavigationUrl(evt.location_lat, evt.location_lng)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="w-9 h-9 flex items-center justify-center rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+                        title="Get directions"
+                      >
+                        <span className="material-icons text-lg">directions</span>
+                      </a>
+                    )}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate(`/incidents/${evt.id}`);
+                      }}
+                      className="text-primary text-xs font-bold uppercase tracking-widest flex items-center gap-1 hover:underline"
+                    >
+                      Details <span className="material-icons text-sm">chevron_right</span>
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>

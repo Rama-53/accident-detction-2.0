@@ -5,10 +5,13 @@
     min-width: 260px;
     height: 100vh;
     background: var(--bg-sidebar);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
     border-right: 1px solid var(--glass-border);
     display: flex;
     flex-direction: column;
     padding: 24px 16px;
+    z-index: 100;
 }
 
 /* Brand */
@@ -16,17 +19,19 @@
     display: flex;
     align-items: center;
     gap: 12px;
-    margin-bottom: 32px;
+    padding: 0 12px;
+    margin-bottom: 40px;
 }
 
 .brand-icon-wrapper {
     width: 40px;
     height: 40px;
-    background: var(--gradient-primary);
-    border-radius: 12px;
     display: flex;
     align-items: center;
     justify-content: center;
+    background: var(--gradient-primary);
+    border-radius: 12px;
+    box-shadow: 0 4px 12px var(--primary-glow);
 }
 
 .brand-icon {
@@ -34,46 +39,116 @@
 }
 
 .brand-text {
-    font-size: 20px;
+    font-family: 'Outfit', sans-serif;
+    font-size: 22px;
     font-weight: 700;
+    letter-spacing: -0.02em;
+    background: var(--gradient-brand);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
 }
 
-/* Nav */
+/* Navigation */
 .nav-menu {
-    flex: 1;
     display: flex;
     flex-direction: column;
     gap: 6px;
+    flex: 1;
 }
 
 .nav-btn {
+    position: relative;
     display: flex;
     align-items: center;
     gap: 12px;
     padding: 12px 16px;
-    border-radius: 12px;
-    border: none;
+    border-radius: 14px;
+    border: 2px solid transparent;
     background: transparent;
-    cursor: pointer;
     color: var(--text-muted);
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    text-align: left;
 }
 
-.nav-btn.active,
 .nav-btn:hover {
     background: var(--surface-card-hover);
     color: var(--text-main);
 }
 
+/* Premium Active State (Analyze Button Style) */
+.nav-btn.active {
+    /* Remove static background for motion div */
+    background: transparent;
+    color: var(--text-main);
+    font-weight: 600;
+}
+
+.active-background {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(139, 92, 246, 0.1));
+    border: 1px solid rgba(139, 92, 246, 0.3);
+    border-radius: 14px;
+    z-index: 0;
+}
+
+/* Ensure content sits above the background */
+.nav-icon-wrapper,
+.nav-label {
+    position: relative;
+    z-index: 1;
+}
+
+/* Glow Effect for Active Tab */
+.nav-btn.active::after {
+    display: none;
+    /* Let the motion div handle the visuals */
+}
+
+/* Removed old side indicator as the full button is now highlighted */
+.active-indicator {
+    display: none;
+}
+
 /* Footer */
 .sidebar-footer {
-    margin-top: auto;
+    padding-top: 16px;
+    border-top: 1px solid var(--glass-border);
 }
 
 .theme-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
     width: 100%;
-    padding: 12px;
+    padding: 12px 16px;
     border-radius: 12px;
     border: 1px solid var(--glass-border);
     background: var(--surface-card);
+    color: var(--text-muted);
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
     cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.theme-toggle:hover {
+    background: var(--surface-card-hover);
+    color: var(--text-main);
+    border-color: var(--glass-border-hover);
+}
+
+.theme-toggle svg {
+    transition: transform 0.3s ease;
+}
+
+.theme-toggle:hover svg {
+    transform: rotate(15deg);
 }
