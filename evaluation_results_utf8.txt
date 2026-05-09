@@ -1,0 +1,76 @@
+﻿======================================================================
+HYBRID CLASSIFIER EVALUATION
+======================================================================
+[HybridClassifier] Applied global patch to keras.layers.Dense
+[HybridClassifier] Initializing dual-model system...
+[HybridClassifier] Primary (Safety): C:\Users\Ram\Desktop\Project Trial\accident-detction-2.0\classifier\accidents.keras
+[HybridClassifier] Secondary (Accuracy): C:\Users\Ram\Desktop\Project Trial\accident-detction-2.0\classifier\resnet50_phase2_best.keras
+[HybridClassifier] WARNING: No GPU detected. Running on CPU.
+[HybridClassifier] Loading primary model (accidents.keras)...
+[HybridClassifier] Γ£ô Primary model loaded
+[HybridClassifier] Loading secondary model (ResNet50)...
+[HybridClassifier] Γ£ô Secondary model loaded
+[HybridClassifier] Warmup complete
+
+Loading validation images...
+  Accident: 46 images
+  Non Accident: 52 images
+
+Total validation images: 98
+
+Generating hybrid predictions...
+  Processed 10/98...
+  Processed 20/98...
+  Processed 30/98...
+  Processed 40/98...
+  Processed 50/98...
+  Processed 60/98...
+  Processed 70/98...
+  Processed 80/98...
+  Processed 90/98...
+
+======================================================================
+RESULTS ANALYSIS
+======================================================================
+
+Model Agreement Distribution:
+  BOTH_ACCIDENT: 0 (0.0%)
+  BOTH_NO_ACCIDENT: 54 (55.1%)
+  DISAGREEMENT: 44 (44.9%)
+  PRIMARY_NO_ACCIDENT: 0 (0.0%)
+
+Overall Accuracy: 89.80%
+
+Per-Class Performance:
+  Accident:
+    Recall:    86.96% (40/46)
+    Precision: 90.91%
+  Non-Accident:
+    Recall:    92.31% (48/52)
+    Precision: 88.89%
+
+Confusion Matrix:
+                  | Predicted Accident | Predicted Non-Accident
+  True Accident   |                 40 |                      6
+  True Non-Acc    |                  4 |                     48
+
+======================================================================
+COMPARISON WITH SINGLE MODELS
+======================================================================
+
+Model                          | Accuracy   | Accident Recall  | Non-Acc Recall  
+--------------------------------------------------------------------------------
+accidents.keras (Primary)      | 46.94%     | 100.00%          | 0.00%           
+ResNet50 (Secondary)           | 58.16%     | 39.13%           | 75.00%          
+HYBRID (Both)                  | 89.80%     | 86.96%           | 92.31%          
+
+Improvement vs Primary Model:
+  Accuracy: +42.86%
+  False Alarm Reduction: 92.31%
+  Accident Detection: -13.04%
+
+Γ£à Evaluation saved to: hybrid_classifier_evaluation.png
+
+======================================================================
+EVALUATION COMPLETE
+======================================================================

@@ -23,6 +23,7 @@ services:
       - ./videos:/app/videos
       - ./cctv_eg.mp4:/app/cctv_eg.mp4
       - ./temp_uploads:/app/temp_uploads
+      - ./config.json:/app/config.json
     depends_on:
       - mongo
     deploy:
@@ -52,6 +53,9 @@ services:
         - action: sync
           path: ./classifier_subscriber.py
           target: /app/classifier_subscriber.py
+        - action: sync
+          path: ./config.json
+          target: /app/config.json
         - action: rebuild
           path: ./requirements.combined.txt
 
@@ -71,6 +75,7 @@ services:
     volumes:
       - ./accident_crops:/app/accident_crops
       - ./temp_uploads:/app/temp_uploads
+      - ./config.json:/app/config.json
       - /var/run/docker.sock:/var/run/docker.sock
     depends_on:
       - mongo
@@ -83,6 +88,9 @@ services:
         - action: sync
           path: ./utils
           target: /app/utils
+        - action: sync
+          path: ./config.json
+          target: /app/config.json
         - action: rebuild
           path: ./requirements.api.txt
 
